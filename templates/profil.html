@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mon Profil - UIR</title>
+    <link rel="stylesheet" href="/static/dashboard.css">
+    <link rel="stylesheet" href="/static/pages.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .profile-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            margin: 20px auto;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .profile-header-bg {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 120px;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            z-index: 1;
+        }
+
+        .profile-avatar {
+            width: 120px; height: 120px;
+            border-radius: 50%;
+            background: white;
+            padding: 5px;
+            margin: 60px auto 20px; /* Push down to overlap header */
+            position: relative;
+            z-index: 2;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .profile-avatar img {
+            width: 100%; height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            background: #f1f5f9;
+        }
+
+        .profile-name { font-size: 2rem; font-weight: 800; color: #1e3c72; margin-bottom: 5px; }
+        .profile-role { color: #64748b; font-weight: 600; font-size: 1.1rem; margin-bottom: 30px; text-transform: uppercase; letter-spacing: 1px; }
+
+        .info-grid {
+            display: grid;
+            gap: 15px;
+            text-align: left;
+            margin-top: 20px;
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 15px;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .info-item:last-child { border-bottom: none; padding-bottom: 0; }
+        
+        .info-label { font-weight: 600; color: #64748b; }
+        .info-value { font-weight: 700; color: #334155; }
+
+        .edit-btn {
+            margin-top: 30px;
+            background: transparent;
+            border: 2px solid #1e3c72;
+            color: #1e3c72;
+            padding: 10px 25px;
+            border-radius: 30px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .edit-btn:hover { background: #1e3c72; color: white; }
+    </style>
+</head>
+<body>
+    <div class="background-overlay"></div>
+
+    <header class="dashboard-header">
+        <div class="header-content">
+            <div class="logo-container">
+                <a href="{{ dashboard_link }}">
+                    <img src="/static/uir logo.png" class="logo" alt="UIR Logo">
+                </a>
+            </div>
+            <div class="user-section">
+                <a href="{{ dashboard_link }}" class="header-link"><i class="fas fa-home"></i> Accueil</a>
+                {% if user_role == 'student' %}
+                <a href="emploi-temps.html" class="header-link"><i class="fas fa-calendar-alt"></i> Emploi du temps</a>
+                {% endif %}
+                <a href="/api/logout" class="header-link danger-btn"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="page-main">
+        <div class="page-container">
+            <div class="profile-card">
+                <div class="profile-header-bg"></div>
+                
+                <div class="profile-avatar">
+                    <img src="https://ui-avatars.com/api/?name={{ user_name }}&background=1e3c72&color=fff&size=128" alt="Avatar">
+                </div>
+
+                <h1 class="profile-name">{{ user_name }}</h1>
+                <div class="profile-role" id="roleDisplay">Chargement...</div>
+
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">Email</span>
+                        <span class="info-value" id="emailDisplay">{{ user_name.lower().replace(' ', '.') }}@uir.ac.ma</span>
+                    </div>
+                    
+                    <div class="info-item student-only" style="display:none;">
+                        <span class="info-label">Année</span>
+                        <span class="info-value" id="yearDisplay">...</span>
+                    </div>
+
+                    <div class="info-item teacher-only" style="display:none;">
+                        <span class="info-label">Département</span>
+                        <span class="info-value" id="deptDisplay">Informatique</span>
+                    </div>
+
+                    <div class="info-item">
+                        <span class="info-label">Statut du compte</span>
+                        <span class="info-value" style="color:#22c55e;">Actif</span>
+                    </div>
+                </div>
+
+                <button class="edit-btn" onclick="alert('La modification du profil sera bientôt disponible !')">
+                    <i class="fas fa-pen"></i> Modifier mes infos
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Use user_role passed directly from Flask
+        const userRole = "{{ user_role }}";
+        
+        const roleNames = {
+            'student': 'Étudiant',
+            'teacher': 'Enseignant',
+            'admin': 'Administrateur'
+        };
+
+        // Set the role display name
+        document.getElementById('roleDisplay').innerText = roleNames[userRole] || 'Utilisateur';
+
+        window.onload = async function() {
+            // Show fields based on role
+            if (userRole === 'student') {
+                document.querySelectorAll('.student-only').forEach(el => el.style.display = 'flex');
+                
+                // Fetch extra student info (like year) if available
+                try {
+                    const res = await fetch('/api/student/info');
+                    const data = await res.json();
+                    if(data.year) {
+                        document.getElementById('yearDisplay').innerText = "Année " + data.year;
+                    }
+                } catch(e) { console.error("Could not fetch student info", e); }
+            } 
+            else if (userRole === 'teacher') {
+                document.querySelectorAll('.teacher-only').forEach(el => el.style.display = 'flex');
+            }
+        };
+    </script>
+</body>
+</html>

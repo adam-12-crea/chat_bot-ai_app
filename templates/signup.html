@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up - Student Multitask AI Helper</title>
+    <link rel="stylesheet" href="/static/signin.css">
+</head>
+<body>
+    <!-- Background Image -->
+    <div class="background-image"></div>
+    
+    <!-- Logo -->
+    <div class="logo-container">
+        <a href="accueil.html">
+            <img src="/static/uir logo.png" alt="Logo Université" class="logo" id="universityLogo">
+        </a>
+    </div>
+
+    <!-- Sign Up Form Container -->
+    <div class="signin-container">
+        <div class="signin-card">
+            <h1 class="signin-title">Créer un compte</h1>
+            <p class="signin-subtitle">Rejoignez notre plateforme</p>
+            
+            <form class="signin-form" id="signupForm">
+                <div class="form-group">
+                    <label for="fullName">Nom complet</label>
+                    <input 
+                        type="text" 
+                        id="fullName" 
+                        name="fullName" 
+                        placeholder="Votre nom complet"
+                        required
+                        autocomplete="name"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input 
+                        type="email" 
+                        id="email" 
+                        name="email" 
+                        placeholder="votre.email@exemple.com"
+                        required
+                        autocomplete="email"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Mot de passe</label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password" 
+                        placeholder="Créez un mot de passe"
+                        required
+                        autocomplete="new-password"
+                        minlength="8"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="confirmPassword">Confirmer le mot de passe</label>
+                    <input 
+                        type="password" 
+                        id="confirmPassword" 
+                        name="confirmPassword" 
+                        placeholder="Confirmez votre mot de passe"
+                        required
+                        autocomplete="new-password"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="userType">Type de compte</label>
+                    <select id="userType" name="userType" required>
+                        <option value="">Sélectionnez un type</option>
+                        <option value="student">Étudiant</option>
+                        <option value="teacher">Enseignant</option>
+                        <option value="admin">Administration</option>
+                    </select>
+                </div>
+
+                <div class="form-options">
+                    <label class="remember-me">
+                        <input type="checkbox" id="agreeTerms" name="agreeTerms" required>
+                        <span>J'accepte les <a href="#" style="color: #1e3c72;">conditions d'utilisation</a></span>
+                    </label>
+                </div>
+
+                <button type="submit" class="btn-signin">Créer mon compte</button>
+            </form>
+
+            <div class="signup-link">
+                <p>Vous avez déjà un compte ? <a href="signin.html">Se connecter</a></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="signup.js"></script>
+</body>
+</html>
+

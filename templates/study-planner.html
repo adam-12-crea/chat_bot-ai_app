@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Générateur de Planning</title>
+    <link rel="stylesheet" href="/static/dashboard.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .page-container { max-width: 800px; margin: 40px auto; padding: 20px; }
+        .planner-panel {
+            background: #1e293b; border: 1px solid #334155; border-radius: 15px; padding: 30px;
+        }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; color: #94a3b8; margin-bottom: 10px; font-weight: bold; }
+        
+        /* CHECKBOX GRID STYLES */
+        .subjects-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px; margin-top: 10px;
+        }
+        .subject-checkbox {
+            background: rgba(255,255,255,0.05); border: 1px solid #334155;
+            padding: 10px; border-radius: 8px; cursor: pointer; transition: 0.2s;
+            display: flex; align-items: center; gap: 10px; color: white;
+        }
+        .subject-checkbox:hover { border-color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
+        .subject-checkbox input { accent-color: #3b82f6; transform: scale(1.2); }
+        .subject-checkbox.checked { border-color: #3b82f6; background: rgba(59, 130, 246, 0.2); }
+
+        input[type="number"], select, input[type="text"] {
+            width: 100%; padding: 12px; background: #0f172a; border: 1px solid #334155;
+            border-radius: 8px; color: white; font-size: 1rem;
+        }
+        
+        .generate-btn {
+            background: linear-gradient(135deg, #3b82f6, #2563eb); color: white;
+            width: 100%; padding: 15px; border: none; border-radius: 10px;
+            font-size: 1.1rem; font-weight: bold; cursor: pointer; margin-top: 20px;
+        }
+        .generate-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(59, 130, 246, 0.4); }
+
+        .plan-result {
+            margin-top: 30px; background: #0f172a; border-radius: 12px; padding: 20px;
+            border: 1px solid #334155; white-space: pre-wrap; color: #e2e8f0; display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="background-overlay"></div>
+    <header class="dashboard-header">
+    <div class="header-content">
+        <div class="logo-container">
+            <a href="{{ dashboard_link }}">
+                <img src="/static/uir logo.png" class="logo" alt="UIR Logo">
+            </a>
+        </div>
+
+        <div class="user-section">
+            <a href="{{ dashboard_link }}" class="header-link">
+                <i class="fas fa-home"></i> Accueil
+            </a>
+            
+            {% if user_role == 'student' %}
+            <a href="emploi-temps.html" class="header-link">
+                <i class="fas fa-calendar-alt"></i> Emploi du temps
+            </a>
+            {% endif %}
+
+            <a href="profil.html" class="header-link">
+                <i class="fas fa-user"></i> Profil
+            </a>
+
+            <a href="/api/logout" class="header-link danger-btn">
+                <i class="fas fa-sign-out-alt"></i> Déconnexion
+            </a>
+        </div>
+    </div>
+</header>
+
+    <div class="page-container">
+        <h1 style="color: white; text-align: center; margin-bottom: 30px;">📅 Générateur de Planning IA</h1>
+        
+        <div class="planner-panel">
+            <div class="form-group">
+                <label>Combien de jours voulez-vous étudier ?</label>
+                <input type="number" id="days" min="1" max="30" value="3">
+            </div>
+
+            <div class="form-group">
+                <label>Quelles matières voulez-vous réviser ?</label>
+                <div id="loadingSubjects" style="color:#64748b; font-style:italic;">Chargement de vos modules...</div>
+                <div class="subjects-grid" id="subjectsContainer"></div>
+            </div>
+
+            <div class="form-group">
+                <label>Quel est votre objectif ? (Ex: Préparer le partiel, Réviser les bases)</label>
+                <input type="text" id="goal" placeholder="Ex: Préparer l'examen final">
+            </div>
+
+            <button class="generate-btn" onclick="generatePlan()" id="genBtn">🚀 Générer mon Planning</button>
+        </div>
+
+        <div id="planResult" class="plan-result"></div>
+    </div>
+
+    <script>
+        // Load Subjects on Page Load
+        window.onload = async function() {
+            const container = document.getElementById('subjectsContainer');
+            const loader = document.getElementById('loadingSubjects');
+            
+            try {
+                const res = await fetch('/api/student/subjects');
+                const subjects = await res.json();
+                
+                loader.style.display = 'none';
+
+                if (subjects.length === 0) {
+                    container.innerHTML = '<div style="color:#ef4444;">Aucun module trouvé pour votre filière.</div>';
+                    return;
+                }
+
+                subjects.forEach(sub => {
+                    const id = sub.replace(/\s+/g, '-').toLowerCase();
+                    container.innerHTML += `
+                    <label class="subject-checkbox" onclick="this.classList.toggle('checked')">
+                        <input type="checkbox" value="${sub}">
+                        <span>${sub}</span>
+                    </label>`;
+                });
+            } catch (e) {
+                loader.innerText = "Erreur de chargement des matières.";
+            }
+        }
+
+        async function generatePlan() {
+            const btn = document.getElementById('genBtn');
+            const resultDiv = document.getElementById('planResult');
+            const days = document.getElementById('days').value;
+            const goal = document.getElementById('goal').value;
+            
+            // Get selected checkboxes
+            const checkedBoxes = document.querySelectorAll('.subject-checkbox input:checked');
+            const selectedSubjects = Array.from(checkedBoxes).map(cb => cb.value);
+
+            if (selectedSubjects.length === 0) return alert("Veuillez sélectionner au moins une matière.");
+            if (!goal) return alert("Veuillez définir un objectif.");
+
+            // UI Loading State
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Création du planning...';
+            resultDiv.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/plan/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        days: days, 
+                        subjects: selectedSubjects, 
+                        goal: goal 
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDiv.style.display = 'block';
+                    // Simple formatting for the markdown response
+                    resultDiv.innerHTML = formatPlan(data.plan);
+                } else {
+                    alert("Erreur lors de la génération.");
+                }
+            } catch (error) {
+                console.error(error);
+                alert("Erreur serveur.");
+            } finally {
+                btn.disabled = false;
+                btn.innerText = '🚀 Générer mon Planning';
+            }
+        }
+
+        function formatPlan(text) {
+            // Convert simple markdown bolding to HTML for display
+            return text
+                .replace(/\*\*(.*?)\*\*/g, '<strong style="color:#fbbf24">$1</strong>')
+                .replace(/\n/g, '<br>');
+        }
+    </script>
+</body>
+</html>

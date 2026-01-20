@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Passer le Quiz</title>
+    <link rel="stylesheet" href="/static/dashboard.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .page-container { max-width: 800px; margin: 40px auto; padding: 20px; }
+        
+        .quiz-header { text-align: center; margin-bottom: 40px; }
+        .quiz-title { font-size: 2rem; color: white; margin-bottom: 10px; font-weight: 800; }
+        .quiz-meta { color: #94a3b8; font-size: 1rem; }
+
+        /* QUESTION CARD */
+        .question-card {
+            background: #1e293b; border: 1px solid #334155; border-radius: 16px;
+            padding: 25px; margin-bottom: 30px; position: relative;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .question-number { color: #3b82f6; font-size: 0.9rem; font-weight: bold; text-transform: uppercase; margin-bottom: 10px; display: block; }
+        .question-text { color: white; font-size: 1.25rem; font-weight: 600; margin-bottom: 20px; line-height: 1.5; }
+
+        /* OPTIONS */
+        .options-list { list-style: none; padding: 0; display: grid; gap: 12px; }
+        .option-item {
+            background: rgba(255,255,255,0.03); border: 2px solid #334155;
+            padding: 16px 20px; border-radius: 12px; cursor: pointer;
+            transition: all 0.2s ease; display: flex; align-items: center; gap: 15px; color: #cbd5e1;
+        }
+        .option-item:hover { background: rgba(255,255,255,0.08); border-color: #475569; }
+        .option-item.selected { border-color: #3b82f6; background: rgba(59, 130, 246, 0.15); color: white; }
+        
+        .option-item.correct { border-color: #22c55e; background: rgba(34, 197, 94, 0.15); color: #22c55e; }
+        .option-item.wrong { border-color: #ef4444; background: rgba(239, 68, 68, 0.15); color: #ef4444; opacity: 0.8; }
+
+        .radio-circle {
+            width: 20px; height: 20px; border-radius: 50%; border: 2px solid #64748b;
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .option-item.selected .radio-circle { border-color: #3b82f6; background: #3b82f6; }
+        .radio-circle i { font-size: 10px; color: white; display: none; }
+        .option-item.selected .radio-circle i { display: block; }
+
+        /* HINT SECTION */
+        .hint-wrapper { margin-top: 15px; padding-top: 15px; border-top: 1px dashed #334155; }
+        .hint-btn {
+            background: transparent; border: none; color: #fbbf24; cursor: pointer;
+            font-size: 0.9rem; display: inline-flex; align-items: center; gap: 6px;
+            padding: 5px 10px; border-radius: 6px; transition: 0.2s;
+        }
+        .hint-btn:hover { background: rgba(251, 191, 36, 0.1); }
+        .hint-text { 
+            margin-top: 10px; color: #fbbf24; font-size: 0.95rem; 
+            background: rgba(251, 191, 36, 0.1); padding: 12px; border-radius: 8px; 
+            display: none; border: 1px solid rgba(251, 191, 36, 0.2);
+        }
+
+        .explanation-box {
+            margin-top: 20px; padding: 15px; background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.2); border-radius: 8px;
+            color: #86efac; font-size: 0.95rem; display: none;
+        }
+
+        .submit-bar {
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            background: #0f172a; border-top: 1px solid #334155; padding: 20px;
+            display: flex; justify-content: center; align-items: center; z-index: 100;
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.3);
+        }
+        .submit-btn {
+            background: linear-gradient(135deg, #22c55e, #16a34a); color: white; 
+            padding: 15px 60px; border: none; border-radius: 12px; 
+            font-size: 1.1rem; font-weight: bold; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3); transition: transform 0.2s;
+        }
+        .submit-btn:hover { transform: translateY(-2px); }
+        .submit-btn:disabled { background: #475569; cursor: not-allowed; transform: none; }
+
+        .score-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.95); z-index: 200; display: none;
+            justify-content: center; align-items: center; flex-direction: column; backdrop-filter: blur(5px);
+        }
+        .score-circle {
+            width: 160px; height: 160px; border-radius: 50%; 
+            border: 8px solid #3b82f6; background: #1e293b;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 3.5rem; font-weight: 800; color: white; margin-bottom: 25px;
+        }
+        .score-actions { display: flex; gap: 15px; margin-top: 30px; }
+        .action-btn {
+            padding: 12px 25px; border-radius: 10px; text-decoration: none; font-weight: bold; color: white;
+            transition: 0.2s; cursor: pointer; border: none; font-size: 1rem;
+        }
+        .btn-review { background: #334155; border: 1px solid #475569; }
+        .btn-home { background: #3b82f6; }
+    </style>
+</head>
+<body>
+    <div class="background-overlay"></div>
+    <header class="dashboard-header">
+        <div class="header-content">
+            <div class="logo-container">
+                <a href="{{ dashboard_link }}"><img src="/static/uir logo.png" class="logo" alt="UIR Logo"></a>
+            </div>
+            <div class="user-section">
+                <a href="{{ dashboard_link }}" class="header-link"><i class="fas fa-home"></i> Accueil</a>
+                <a href="/api/logout" class="header-link danger-btn"><i class="fas fa-sign-out-alt"></i></a>
+            </div>
+        </div>
+    </header>
+
+    <div class="page-container">
+        <div class="quiz-header">
+            <div class="quiz-title" id="quizSubject">Chargement...</div>
+            <div class="quiz-meta">Répondez à toutes les questions</div>
+        </div>
+        <div id="questionsContainer">
+            <div style="text-align:center; color:#94a3b8; padding:50px;">
+                <i class="fas fa-spinner fa-spin fa-3x"></i><br><br>Récupération du quiz...
+            </div>
+        </div>
+        <div style="height: 120px;"></div> 
+    </div>
+
+    <div class="submit-bar">
+        <button class="submit-btn" onclick="submitQuiz()" id="submitBtn">Valider mes réponses <i class="fas fa-check"></i></button>
+    </div>
+
+    <div class="score-overlay" id="scoreModal">
+        <div class="score-circle" id="finalScore">0%</div>
+        <h2 style="color:white; margin-bottom: 10px;" id="feedbackTitle">Bien joué !</h2>
+        <div class="score-actions">
+            <button class="action-btn btn-review" onclick="closeModal()">Voir corrections</button>
+            <a href="quiz.html" class="action-btn btn-home">Nouveau Quiz</a>
+        </div>
+    </div>
+
+    <script>
+        // 1. DUAL SOURCE ID CHECK (URL OR LOCALSTORAGE)
+        const urlParams = new URLSearchParams(window.location.search);
+        let currentQuizId = urlParams.get('id');
+
+        // If not in URL, check LocalStorage (Compatibility Mode)
+        if (!currentQuizId) {
+            currentQuizId = localStorage.getItem('currentQuizId');
+        }
+
+        // Safety Redirect if still missing
+        if (!currentQuizId) {
+            alert("Erreur : Aucun ID de quiz trouvé.");
+            window.location.href = 'quiz.html';
+        }
+
+        let quizData = [];
+        let userAnswers = {};
+
+        // 2. Load Quiz
+        window.onload = async function() {
+            try {
+                const res = await fetch(`/api/quiz/${currentQuizId}`);
+                const data = await res.json();
+                
+                if (data.error || !data.questions) {
+                    alert("Quiz introuvable.");
+                    window.location.href = 'quiz.html';
+                    return;
+                }
+
+                document.getElementById('quizSubject').innerText = data.subject || "Quiz";
+                quizData = data.questions;
+                renderQuestions(data.questions);
+            } catch (e) {
+                console.error(e);
+                document.getElementById('questionsContainer').innerHTML = '<div style="text-align:center; color:#ef4444;">Erreur serveur.</div>';
+            }
+        };
+
+        // 3. Render
+        function renderQuestions(questions) {
+            const container = document.getElementById('questionsContainer');
+            container.innerHTML = '';
+
+            questions.forEach((q, index) => {
+                let optionsHtml = '';
+                q.options.forEach((opt, optIndex) => {
+                    optionsHtml += `
+                    <li class="option-item" onclick="selectOption('${q.id}', ${optIndex}, this)">
+                        <div class="radio-circle"><i class="fas fa-check"></i></div>
+                        <span id="text-${q.id}-${optIndex}">${opt}</span>
+                    </li>`;
+                });
+
+                container.innerHTML += `
+                <div class="question-card" id="card-${q.id}">
+                    <span class="question-number">Question ${index + 1}</span>
+                    <div class="question-text">${q.question}</div>
+                    <ul class="options-list" id="opts-${q.id}">${optionsHtml}</ul>
+                    
+                    <div class="hint-wrapper">
+                        <button class="hint-btn" id="btn-hint-${q.id}" onclick="getHint('${q.id}', ${index})">
+                            <i class="far fa-lightbulb"></i> Indice
+                        </button>
+                        <div class="hint-text" id="hint-${q.id}"></div>
+                    </div>
+                    <div class="explanation-box" id="explain-${q.id}"></div>
+                </div>`;
+            });
+        }
+
+        function selectOption(qid, optIndex, el) {
+            const text = document.getElementById(`text-${qid}-${optIndex}`).innerText;
+            userAnswers[qid] = text;
+            
+            const parent = document.getElementById(`opts-${qid}`);
+            parent.querySelectorAll('.option-item').forEach(e => e.classList.remove('selected'));
+            el.classList.add('selected');
+        }
+
+        async function getHint(qid, index) {
+            const box = document.getElementById(`hint-${qid}`);
+            const btn = document.getElementById(`btn-hint-${qid}`);
+            
+            if(box.style.display === 'block') return;
+            
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Chargement...';
+            
+            try {
+                const res = await fetch('/api/quiz/hint', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ quiz_id: currentQuizId, index: index })
+                });
+                const data = await res.json();
+                
+                box.innerHTML = `<strong>💡 Indice :</strong> ${data.hint || "Pas d'indice."}`;
+                box.style.display = 'block';
+                btn.style.display = 'none';
+            } catch(e) {
+                btn.innerHTML = "Erreur";
+            }
+        }
+
+        async function submitQuiz() {
+            if (Object.keys(userAnswers).length < quizData.length) {
+                if(!confirm("Vous n'avez pas tout rempli. Valider ?")) return;
+            }
+
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Correction...';
+
+            const formData = new FormData();
+            formData.append('quiz_id', currentQuizId);
+            formData.append('answers', JSON.stringify(userAnswers));
+
+            try {
+                const res = await fetch('/api/quiz/submit', { method: 'POST', body: formData });
+                const result = await res.json();
+                displayResults(result);
+                btn.style.display = 'none';
+            } catch (e) {
+                alert("Erreur réseau.");
+                btn.disabled = false;
+            }
+        }
+
+        function displayResults(result) {
+            document.getElementById('scoreModal').style.display = 'flex';
+            const circle = document.getElementById('finalScore');
+            circle.innerText = Math.round(result.score) + "%";
+            
+            if(result.score >= 50) circle.style.borderColor = "#22c55e";
+            else circle.style.borderColor = "#ef4444";
+
+            quizData.forEach(q => {
+                const userAnswer = userAnswers[q.id];
+                const correction = result.corrections.find(c => c.question_id === q.id);
+                const correctAnswer = correction ? correction.correct_answer : "";
+                const explanation = correction ? correction.explanation : "";
+
+                const opts = document.getElementById(`opts-${q.id}`);
+                opts.querySelectorAll('.option-item').forEach(el => {
+                    const text = el.querySelector('span').innerText;
+                    el.onclick = null;
+                    el.style.cursor = "default";
+
+                    if (text === correctAnswer) {
+                        el.classList.add('correct');
+                        el.querySelector('.radio-circle').innerHTML = '<i class="fas fa-check"></i>';
+                    } else if (text === userAnswer) {
+                        el.classList.add('wrong');
+                        el.querySelector('.radio-circle').innerHTML = '<i class="fas fa-times"></i>';
+                    }
+                });
+
+                const exp = document.getElementById(`explain-${q.id}`);
+                exp.innerHTML = `<strong>Explication :</strong> ${explanation}`;
+                exp.style.display = 'block';
+                
+                const hBtn = document.getElementById(`btn-hint-${q.id}`);
+                if(hBtn) hBtn.style.display = 'none';
+            });
+        }
+
+        function closeModal() {
+            document.getElementById('scoreModal').style.display = 'none';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>

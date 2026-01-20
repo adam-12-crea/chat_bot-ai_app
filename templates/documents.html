@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Mes Documents</title>
+    <link rel="stylesheet" href="/static/dashboard.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .page-container { max-width: 1000px; margin: 40px auto; padding: 20px; }
+        .grid-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+        
+        /* LEFT: FORM */
+        .request-panel { background: #1e293b; padding: 30px; border-radius: 12px; border: 1px solid #334155; height: fit-content; }
+        h2 { color: white; margin-bottom: 20px; border-bottom: 1px solid #334155; padding-bottom: 10px; }
+        
+        .form-group { margin-bottom: 20px; }
+        label { display: block; color: #94a3b8; margin-bottom: 8px; font-weight: bold; }
+        select, input { width: 100%; padding: 12px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; color: white; }
+        
+        .btn-submit { background: #3b82f6; color: white; width: 100%; padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-submit:hover { background: #2563eb; }
+
+        /* RIGHT: HISTORY */
+        .history-panel { background: #0f172a; padding: 30px; border-radius: 12px; border: 1px solid #334155; min-height: 400px; }
+        
+        .request-card { 
+            background: #1e293b; padding: 20px; border-radius: 8px; margin-bottom: 15px; 
+            border-left: 5px solid #334155; display: flex; flex-direction: column; gap: 10px;
+        }
+        
+        .req-header { display: flex; justify-content: space-between; align-items: flex-start; }
+        .req-info h4 { margin: 0 0 5px 0; color: white; font-size: 1.1rem; }
+        .req-meta { font-size: 0.85rem; color: #64748b; }
+        
+        /* STATUS BADGES */
+        .status-badge { padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; text-transform: uppercase; }
+        
+        /* Pending */
+        .card-pending { border-left-color: #fbbf24; }
+        .badge-pending { background: rgba(251, 191, 36, 0.2); color: #fbbf24; }
+        
+        /* Completed */
+        .card-completed { border-left-color: #22c55e; }
+        .badge-completed { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+        
+        /* Rejected */
+        .card-rejected { border-left-color: #ef4444; }
+        .badge-rejected { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+
+        /* ACTION AREA */
+        .req-actions { 
+            border-top: 1px solid #334155; padding-top: 10px; margin-top: 5px; 
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        
+        .btn-download { 
+            background: #22c55e; color: white; padding: 8px 15px; border-radius: 6px; 
+            text-decoration: none; font-size: 0.9rem; font-weight: bold; display: inline-flex; align-items: center; gap: 8px;
+        }
+        .btn-download:hover { background: #16a34a; }
+
+        .reject-reason { color: #ef4444; font-size: 0.9rem; font-style: italic; background: rgba(239,68,68,0.1); padding: 8px; border-radius: 5px; width: 100%; }
+
+        #loadingState { color: #94a3b8; text-align: center; margin-bottom: 10px; }
+        #extraFields { display: none; margin-top: 15px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <div class="background-overlay"></div>
+    <header class="dashboard-header">
+    <div class="header-content">
+        <div class="logo-container">
+            <a href="{{ dashboard_link }}">
+                <img src="/static/uir logo.png" class="logo" alt="UIR Logo">
+            </a>
+        </div>
+
+        <div class="user-section">
+            <a href="{{ dashboard_link }}" class="header-link">
+                <i class="fas fa-home"></i> Accueil
+            </a>
+            
+            {% if user_role == 'student' %}
+            <a href="emploi-temps.html" class="header-link">
+                <i class="fas fa-calendar-alt"></i> Emploi du temps
+            </a>
+            {% endif %}
+
+            <a href="profil.html" class="header-link">
+                <i class="fas fa-user"></i> Profil
+            </a>
+
+            <a href="/api/logout" class="header-link danger-btn">
+                <i class="fas fa-sign-out-alt"></i> Déconnexion
+            </a>
+        </div>
+    </div>
+</header>
+
+    <div class="page-container">
+        <h1 style="color:white; margin-bottom:30px;">📄 Guichet Administratif</h1>
+        
+        <div class="grid-layout">
+            <div class="request-panel">
+                <h2>Nouvelle Demande</h2>
+                <div id="loadingState"><i class="fas fa-spinner fa-spin"></i> Chargement...</div>
+
+                <div id="requestFormContent" style="display:none;">
+                    <div class="form-group">
+                        <label>Type de document :</label>
+                        <select id="docType" onchange="toggleFields()">
+                            <option value="">-- Sélectionner --</option>
+                        </select>
+                    </div>
+
+                    <div id="extraFields">
+                        <div class="form-group">
+                            <label>Semestre concerné :</label>
+                            <select id="semester"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Année Universitaire :</label>
+                            <input type="text" id="yearInput" placeholder="Ex: 2024-2025">
+                        </div>
+                    </div>
+
+                    <button class="btn-submit" onclick="submitRequest()">Envoyer la demande</button>
+                </div>
+            </div>
+
+            <div class="history-panel">
+                <h2>Mes Demandes</h2>
+                <div id="historyList" style="display: flex; flex-direction: column; gap: 15px;">
+                    Chargement...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let studentInfo = {};
+
+        window.onload = async function() {
+            await loadStudentInfo();
+            loadRequests();
+        };
+
+        async function loadStudentInfo() {
+            try {
+                const res = await fetch('/api/student/info');
+                studentInfo = await res.json();
+                initForm();
+            } catch (e) { console.error(e); }
+        }
+
+        function initForm() {
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('requestFormContent').style.display = 'block';
+
+            const docSelect = document.getElementById('docType');
+            const semSelect = document.getElementById('semester');
+
+            // --- 1. POPULATE DOCS BASED ON ELIGIBILITY ---
+            let options = [
+                { val: "Attestation scolaire", text: "Attestation scolaire" },
+                { val: "Attestation de scolarité homologuée", text: "Attestation homologuée" }
+            ];
+
+            if (studentInfo.year > 1 || studentInfo.is_graduated) 
+                options.push({ val: "Relevé de notes", text: "Relevé de notes" });
+
+            if (studentInfo.has_scholarship) 
+                options.push({ val: "Attestation de bourse", text: "Attestation de bourse" });
+
+            if (studentInfo.is_graduated) {
+                options.push({ val: "Attestation de réussite", text: "Attestation de réussite" });
+                options.push({ val: "Attestation de diplôme", text: "Attestation de diplôme" });
+            }
+
+            options.forEach(opt => {
+                docSelect.innerHTML += `<option value="${opt.val}">${opt.text}</option>`;
+            });
+
+            // --- 2. POPULATE SEMESTERS ---
+            if (studentInfo.year > 1) {
+                const maxSemesters = (studentInfo.year - 1) * 2;
+                for (let i = 1; i <= maxSemesters; i++) {
+                    semSelect.innerHTML += `<option value="S${i}">Semestre ${i}</option>`;
+                }
+            }
+        }
+
+        function toggleFields() {
+            const type = document.getElementById('docType').value;
+            const extra = document.getElementById('extraFields');
+            extra.style.display = (type === 'Relevé de notes') ? 'block' : 'none';
+        }
+
+        async function submitRequest() {
+            const type = document.getElementById('docType').value;
+            if(!type) return alert("Veuillez sélectionner un document.");
+
+            let details = {};
+            if (type === 'Relevé de notes') {
+                details.semester = document.getElementById('semester').value;
+                details.year = document.getElementById('yearInput').value;
+                if(!details.year) return alert("Précisez l'année.");
+            }
+
+            try {
+                const res = await fetch('/api/student/request_document', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ type: type, details: details })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert("Demande envoyée !");
+                    loadRequests();
+                } else alert("Erreur: " + data.error);
+            } catch (e) { alert("Erreur serveur."); }
+        }
+
+        // --- FIXED: DISPLAY ALL STATUSES CORRECTLY ---
+        async function loadRequests() {
+            const container = document.getElementById('historyList');
+            try {
+                const res = await fetch('/api/student/my_requests');
+                const reqs = await res.json();
+                
+                container.innerHTML = '';
+
+                if(reqs.length === 0) {
+                    container.innerHTML = '<div style="color:#64748b; text-align:center;">Aucune demande.</div>';
+                    return;
+                }
+
+                reqs.forEach(r => {
+                    let cardClass = 'card-pending';
+                    let badgeClass = 'badge-pending';
+                    let statusText = 'En attente';
+                    let contentHtml = '';
+
+                    // HANDLE "COMPLETED"
+                    if(r.status === 'completed') {
+                        cardClass = 'card-completed';
+                        badgeClass = 'badge-completed';
+                        statusText = 'Traitée';
+                        contentHtml = `
+                            <div class="req-actions">
+                                <span style="color:#94a3b8; font-size:0.9rem;">Document prêt :</span>
+                                <a href="${r.file}" class="btn-download" download target="_blank">
+                                    <i class="fas fa-file-pdf"></i> Télécharger
+                                </a>
+                            </div>`;
+                    } 
+                    // HANDLE "REJECTED"
+                    else if (r.status === 'rejected') {
+                        cardClass = 'card-rejected';
+                        badgeClass = 'badge-rejected';
+                        statusText = 'Refusée';
+                        contentHtml = `
+                            <div class="req-actions">
+                                <div class="reject-reason">
+                                    <i class="fas fa-exclamation-circle"></i> Motif : ${r.reason || "Non spécifié"}
+                                </div>
+                            </div>`;
+                    }
+                    // HANDLE "PENDING"
+                    else {
+                         contentHtml = `
+                            <div class="req-actions">
+                                <span style="color:#64748b; font-size:0.85rem; font-style:italic;">
+                                    En cours de traitement par l'administration...
+                                </span>
+                            </div>`;
+                    }
+
+                    // Format details (Semester/Year)
+                    let detailsTxt = '';
+                    if(r.details && r.details.semester) {
+                        detailsTxt = `<div style="color:#94a3b8; font-size:0.9rem; margin-top:3px;">
+                                        ${r.details.semester} (${r.details.year})
+                                      </div>`;
+                    }
+
+                    container.innerHTML += `
+                    <div class="request-card ${cardClass}">
+                        <div class="req-header">
+                            <div class="req-info">
+                                <h4>${r.type}</h4>
+                                ${detailsTxt}
+                                <div class="req-meta"><i class="far fa-clock"></i> ${r.date}</div>
+                            </div>
+                            <span class="status-badge ${badgeClass}">${statusText}</span>
+                        </div>
+                        ${contentHtml}
+                    </div>`;
+                });
+            } catch (e) { 
+                console.error(e);
+                container.innerHTML = '<div style="color:#ef4444;">Erreur de chargement.</div>'; 
+            }
+        }
+    </script>
+</body>
+</html>

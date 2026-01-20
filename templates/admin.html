@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Admin - UIR</title>
+    <link rel="stylesheet" href="/static/dashboard.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="background-overlay"></div>
+    
+    <header class="dashboard-header">
+    <div class="header-content">
+        <div class="logo-container">
+            <a href="{{ dashboard_link }}">
+                <img src="/static/uir logo.png" class="logo" alt="UIR Logo">
+            </a>
+        </div>
+
+        <div class="user-section">
+            <a href="{{ dashboard_link }}" class="header-link">
+                <i class="fas fa-home"></i> Accueil
+            </a>
+            
+            {% if user_role == 'student' %}
+            <a href="emploi-temps.html" class="header-link">
+                <i class="fas fa-calendar-alt"></i> Emploi du temps
+            </a>
+            {% endif %}
+
+            <a href="profil.html" class="header-link">
+                <i class="fas fa-user"></i> Profil
+            </a>
+
+            <a href="/api/logout" class="header-link danger-btn">
+                <i class="fas fa-sign-out-alt"></i> Déconnexion
+            </a>
+        </div>
+    </div>
+</header>
+
+    <main class="dashboard-main">
+        <div class="dashboard-container">
+            <h1 class="dashboard-title">
+                Espace Administration - {{ user_name.split()[0] if user_name else 'Admin' }}
+            </h1>
+            
+            <div class="dashboard-grid">
+                <button class="dashboard-card" onclick="window.location.href='admin-annonces.html'">
+                    <div class="card-icon">📢</div>
+                    <h2 class="card-title">Annonces</h2>
+                    <p class="card-description">Publier des actualités pour les étudiants</p>
+                </button>
+
+                <button class="dashboard-card" onclick="window.location.href='admin-users.html'">
+                    <div class="card-icon">👥</div>
+                    <h2 class="card-title">Utilisateurs</h2>
+                    <p class="card-description">Gérer les comptes étudiants et profs</p>
+                </button>
+
+                <button class="dashboard-card" onclick="window.location.href='EDT-upload.html'">
+                    <div class="card-icon">📅</div>
+                    <h2 class="card-title">Upload EDT</h2>
+                    <p class="card-description">Mettre en ligne les emplois du temps</p>
+                </button>
+
+                <button class="dashboard-card" onclick="window.location.href='admin-demandes.html'">
+                    <div class="card-icon">📂</div>
+                    <h2 class="card-title">Demandes</h2>
+                    <p class="card-description">Traiter les demandes de documents</p>
+                </button>
+
+                <button class="dashboard-card" onclick="window.location.href='admin-presence.html'">
+                    <div class="card-icon">✅</div>
+                    <h2 class="card-title">Suivi Présence</h2>
+                    <p class="card-description">Consulter les rapports d'assiduité</p>
+                </button>
+
+                <button class="dashboard-card" onclick="window.location.href='chat.html'">
+                    <div class="card-icon">🤖</div>
+                    <h2 class="card-title">Test Chatbot</h2>
+                    <p class="card-description">Accéder à l'interface Assistant IA</p>
+                </button>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

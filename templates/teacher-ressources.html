@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gérer les ressources</title>
+    <link rel="stylesheet" href="/static/dashboard.css">
+    <link rel="stylesheet" href="/static/pages.css">
+</head>
+<body>
+    <div class="background-overlay"></div>
+    <header class="dashboard-header">
+    <div class="header-content">
+        <div class="logo-container">
+            <a href="{{ dashboard_link }}">
+                <img src="/static/uir logo.png" class="logo" alt="UIR Logo">
+            </a>
+        </div>
+
+        <div class="user-section">
+            <a href="{{ dashboard_link }}" class="header-link">
+                <i class="fas fa-home"></i> Accueil
+            </a>
+            
+            {% if user_role == 'student' %}
+            <a href="emploi-temps.html" class="header-link">
+                <i class="fas fa-calendar-alt"></i> Emploi du temps
+            </a>
+            {% endif %}
+
+            <a href="profil.html" class="header-link">
+                <i class="fas fa-user"></i> Profil
+            </a>
+
+            <a href="/api/logout" class="header-link danger-btn">
+                <i class="fas fa-sign-out-alt"></i> Déconnexion
+            </a>
+        </div>
+    </div>
+</header>
+
+    <main class="page-main">
+        <div class="page-container">
+            <div class="title-section">
+                <h1 class="page-title">🗂️ Gérer les ressources</h1>
+            </div>
+
+            <section class="panel">
+                <div class="panel-header">
+                    <h2>Ressources disponibles</h2>
+                    <small>Liste de fichiers (placeholder frontend)</small>
+                </div>
+                <div class="panel-body">
+                    <div id="tResourcesTable" class="table-placeholder">
+                        <p>Chargement...</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+    <script src="/static/localdata.js"></script>
+    <script>
+        const KEY = 'teacherResources';
+        const tableEl = document.getElementById('tResourcesTable');
+
+        function render() {
+            const items = getData(KEY, []);
+            if (!items.length) {
+                tableEl.innerHTML = '<p>Aucune ressource enregistrée.</p>';
+                return;
+            }
+            tableEl.innerHTML = items.map((r, idx) => `
+                <div class="resource-row">
+                    <div>
+                        <strong>${r.title || 'Sans titre'}</strong><br>
+                        <small>${r.subject || 'Matière'}</small><br>
+                        <small>Fichier: ${r.fileName || '—'}</small>
+                    </div>
+                    <div class="resource-actions">
+                        <button class="secondary-btn" data-idx="${idx}">Supprimer</button>
+                    </div>
+                </div>
+            `).join('');
+            tableEl.querySelectorAll('button[data-idx]').forEach(btn => {
+                btn.onclick = () => {
+                    const idx = Number(btn.dataset.idx);
+                    const arr = getData(KEY, []);
+                    arr.splice(idx, 1);
+                    setData(KEY, arr);
+                    render();
+                };
+            });
+        }
+        render();
+    </script>
+</body>
+</html>
+

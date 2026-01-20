@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mon Emploi du Temps</title>
+    <link rel="stylesheet" href="/static/dashboard.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <style>
+        .edt-container { max-width: 900px; margin: 40px auto; padding: 20px; }
+        
+        .edt-card {
+            background: #1e293b; border: 1px solid #334155; border-radius: 12px;
+            padding: 20px; margin-bottom: 15px; display: flex; justify-content: space-between;
+            align-items: center; transition: 0.2s;
+        }
+        .edt-card:hover { border-color: #3b82f6; transform: translateX(5px); }
+        
+        .edt-info h3 { margin: 0; color: white; font-size: 1.1rem; }
+        .edt-meta { color: #94a3b8; font-size: 0.9rem; margin-top: 5px; }
+
+        .btn-group { display: flex; gap: 10px; }
+        
+        .action-btn {
+            padding: 10px 15px; border-radius: 8px; text-decoration: none; font-weight: bold;
+            display: flex; align-items: center; gap: 8px; border: none; cursor: pointer; transition: 0.2s;
+        }
+
+        .btn-view { background: #334155; color: #fbbf24; }
+        .btn-view:hover { background: #475569; }
+
+        .btn-download { background: #3b82f6; color: white; }
+        .btn-download:hover { background: #2563eb; }
+
+        .empty-state { text-align: center; color: #64748b; margin-top: 50px; font-size: 1.1rem; }
+
+        /* MODAL STYLES */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); z-index: 1000; display: none;
+            justify-content: center; align-items: center;
+        }
+        .modal-content {
+            background: #ffffff; /* White bg for better readability of tables */
+            width: 90%; height: 90%; border-radius: 12px;
+            display: flex; flex-direction: column; overflow: hidden; position: relative;
+        }
+        .modal-header {
+            padding: 15px 20px; border-bottom: 1px solid #ddd; background: #1e293b;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .modal-title { color: white; font-weight: bold; }
+        .close-btn { background: none; border: none; color: #ef4444; font-size: 1.5rem; cursor: pointer; }
+        
+        /* Viewer Containers */
+        #iframeViewer { flex-grow: 1; border: none; width: 100%; height: 100%; display: none; }
+        
+        #excelContainer { 
+            flex-grow: 1; overflow: auto; padding: 20px; display: none; color: #333; 
+        }
+
+        /* Excel Table Styling */
+        table { width: 100%; border-collapse: collapse; min-width: 600px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; font-size: 14px; }
+        th { background-color: #f1f5f9; font-weight: bold; }
+        tr:nth-child(even) { background-color: #f8fafc; }
+        tr:hover { background-color: #e2e8f0; }
+
+    </style>
+</head>
+<body>
+    <div class="background-overlay"></div>
+
+    <header class="dashboard-header">
+    <div class="header-content">
+        <div class="logo-container">
+            <a href="{{ dashboard_link }}">
+                <img src="/static/uir logo.png" class="logo" alt="UIR Logo">
+            </a>
+        </div>
+
+        <div class="user-section">
+            <a href="{{ dashboard_link }}" class="header-link">
+                <i class="fas fa-home"></i> Accueil
+            </a>
+            
+            {% if user_role == 'student' %}
+            <a href="emploi-temps.html" class="header-link">
+                <i class="fas fa-calendar-alt"></i> Emploi du temps
+            </a>
+            {% endif %}
+
+            <a href="profil.html" class="header-link">
+                <i class="fas fa-user"></i> Profil
+            </a>
+
+            <a href="/api/logout" class="header-link danger-btn">
+                <i class="fas fa-sign-out-alt"></i> Déconnexion
+            </a>
+        </div>
+    </div>
+</header>
+
+    <div class="edt-container">
+        <h1 style="color: white; margin-bottom: 30px;">📅 Mes Emplois du Temps</h1>
+        <div id="edtList"><div style="color:white;">Chargement...</div></div>
+    </div>
+
+    <div class="modal-overlay" id="viewModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title" id="modalTitle">Aperçu</span>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            
+            <iframe id="iframeViewer" src=""></iframe>
+            
+            <div id="excelContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        window.onload = async function() {
+            const container = document.getElementById('edtList');
+            try {
+                const res = await fetch('/api/get_schedules');
+                const data = await res.json();
+
+                if (data.error) return container.innerHTML = `<div class="empty-state">⚠️ ${data.error}</div>`;
+                if (data.length === 0) return container.innerHTML = `<div class="empty-state">Aucun emploi du temps trouvé pour votre filière.</div>`;
+
+                container.innerHTML = '';
+                data.forEach(edt => {
+                    const isExcel = edt.link.endsWith('.xlsx') || edt.link.endsWith('.xls');
+                    
+                    container.innerHTML += `
+                    <div class="edt-card">
+                        <div class="edt-info">
+                            <h3>${edt.title}</h3>
+                            <div class="edt-meta">Publié le: ${edt.date} | Dept: ${edt.dept}</div>
+                        </div>
+                        <div class="btn-group">
+                            <button class="action-btn btn-view" onclick="openViewer('${edt.link}', ${isExcel}, '${edt.title}')">
+                                <i class="fas fa-eye"></i> Voir
+                            </button>
+                            <a href="${edt.link}" class="action-btn btn-download" download>
+                                <i class="fas fa-download"></i> Télécharger
+                            </a>
+                        </div>
+                    </div>`;
+                });
+            } catch (e) {
+                container.innerHTML = `<div class="empty-state">Erreur de connexion.</div>`;
+            }
+        }
+
+        async function openViewer(url, isExcel, title) {
+            const modal = document.getElementById('viewModal');
+            const iframe = document.getElementById('iframeViewer');
+            const excelDiv = document.getElementById('excelContainer');
+            const modalTitle = document.getElementById('modalTitle');
+
+            modalTitle.innerText = title;
+            modal.style.display = 'flex';
+
+            if (isExcel) {
+                // HIDE iframe, SHOW Excel container
+                iframe.style.display = 'none';
+                excelDiv.style.display = 'block';
+                excelDiv.innerHTML = '<div style="text-align:center; padding:20px;">Chargement du tableau...</div>';
+
+                try {
+                    // Fetch the file as a Blob
+                    const response = await fetch(url);
+                    const arrayBuffer = await response.arrayBuffer();
+
+                    // Parse using SheetJS
+                    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    
+                    // Convert to HTML
+                    const htmlTable = XLSX.utils.sheet_to_html(worksheet);
+                    excelDiv.innerHTML = htmlTable;
+
+                } catch (err) {
+                    console.error(err);
+                    excelDiv.innerHTML = '<div style="color:red; text-align:center;">Impossible de lire le fichier Excel.</div>';
+                }
+
+            } else {
+                // SHOW iframe (PDF/Image), HIDE Excel container
+                excelDiv.style.display = 'none';
+                iframe.style.display = 'block';
+                iframe.src = url;
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('viewModal').style.display = 'none';
+            document.getElementById('iframeViewer').src = '';
+            document.getElementById('excelContainer').innerHTML = '';
+        }
+        
+        window.onclick = function(event) {
+            const modal = document.getElementById('viewModal');
+            if (event.target == modal) closeModal();
+        }
+    </script>
+</body>
+</html>

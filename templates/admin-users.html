@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion Utilisateurs - Admin</title>
+    <link rel="stylesheet" href="/static/dashboard.css">
+    <link rel="stylesheet" href="/static/pages.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Specific Styles for User Management */
+        .controls-bar {
+            display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;
+            background: rgba(255,255,255,0.5); padding: 15px; border-radius: 12px;
+            backdrop-filter: blur(5px); border: 1px solid rgba(255,255,255,0.3);
+        }
+        .search-box {
+            flex: 1; padding: 10px 15px; border-radius: 8px; border: 1px solid #ccc;
+            min-width: 200px;
+        }
+        .tab-btn {
+            background: rgba(255,255,255,0.3); border: 1px solid white; padding: 10px 20px;
+            border-radius: 30px; cursor: pointer; font-weight: bold; color: #1e3c72;
+            transition: 0.3s;
+        }
+        .tab-btn.active {
+            background: #1e3c72; color: white;
+        }
+        
+        .user-table {
+            width: 100%; border-collapse: collapse; margin-top: 10px;
+            background: rgba(255,255,255,0.9); border-radius: 10px; overflow: hidden;
+        }
+        .user-table th, .user-table td {
+            padding: 12px 15px; text-align: left; border-bottom: 1px solid #eee;
+        }
+        .user-table th { background: #f1f5f9; color: #1e3c72; font-weight: 700; }
+        .user-table tr:hover { background: #f8fafc; }
+
+        .action-btn {
+            padding: 5px 10px; border-radius: 5px; border: none; cursor: pointer; color: white;
+            font-size: 0.8rem; margin-right: 5px;
+        }
+        .btn-edit { background: #3b82f6; }
+        .btn-delete { background: #ef4444; }
+
+        /* Modal Styles */
+        .modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:2000; justify-content:center; align-items:center; }
+        .modal-content { background: white; padding: 25px; border-radius: 15px; width: 90%; max-width: 500px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+    </style>
+</head>
+<body>
+    <div class="background-overlay"></div>
+
+    <header class="dashboard-header">
+        <div class="header-content">
+            <div class="logo-container">
+                <a href="{{ dashboard_link }}">
+                    <img src="/static/uir logo.png" class="logo" alt="UIR Logo">
+                </a>
+            </div>
+            <div class="user-section">
+                <a href="{{ dashboard_link }}" class="header-link"><i class="fas fa-home"></i> Accueil</a>
+                {% if user_role == 'student' %}
+                <a href="emploi-temps.html" class="header-link"><i class="fas fa-calendar-alt"></i> Emploi du temps</a>
+                {% endif %}
+                <a href="profil.html" class="header-link"><i class="fas fa-user"></i> Profil</a>
+                <a href="/api/logout" class="header-link danger-btn"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="page-main">
+        <div class="page-container">
+            <div class="title-section">
+                <h1 class="page-title">👥 Gestion des Utilisateurs</h1>
+            </div>
+
+            <div class="controls-bar">
+                <button class="tab-btn active" onclick="switchTab('student')">Étudiants</button>
+                <button class="tab-btn" onclick="switchTab('teacher')">Enseignants</button>
+                
+                <input type="text" id="searchInput" class="search-box" placeholder="Rechercher par nom ou email..." onkeyup="filterTable()">
+                
+                <button class="primary-btn" style="width:auto;" onclick="openModal('addModal')">
+                    <i class="fas fa-plus"></i> Ajouter
+                </button>
+                
+                <button class="primary-btn" style="width:auto; background: #10b981;" onclick="openModal('importModal')">
+                    <i class="fas fa-file-excel"></i> Import Excel
+                </button>
+            </div>
+
+            <div class="panel">
+                <div class="panel-body" style="padding:0;">
+                    <table class="user-table">
+                        <thead>
+                            <tr>
+                                <th>Nom Complet</th>
+                                <th>Email</th>
+                                <th id="colMajor">Filière / Dept</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="userTableBody">
+                            <tr><td colspan="4" style="text-align:center;">Chargement...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="addModal" class="modal">
+        <div class="modal-content">
+            <h2 id="modalTitle" style="margin-bottom:15px; color:#1e3c72;">Ajouter un utilisateur</h2>
+            <form id="userForm" class="upload-form">
+                <input type="hidden" id="editUserId">
+                <div class="form-group">
+                    <label>Type</label>
+                    <select id="userRole" onchange="toggleFields()">
+                        <option value="student">Étudiant</option>
+                        <option value="teacher">Enseignant</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Nom Complet</label>
+                    <input type="text" id="userName" required>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="userEmail" required>
+                </div>
+                <div class="form-group">
+                    <label>Mot de passe (Défaut: 123456)</label>
+                    <input type="text" id="userPassword" placeholder="Laisser vide si inchangé">
+                </div>
+                
+                <div id="studentFields">
+                    <div class="form-group">
+                        <label>Filière (Ex: AI, CSI)</label>
+                        <input type="text" id="userMajor">
+                    </div>
+                    <div class="form-group">
+                        <label>Année (1-5)</label>
+                        <input type="number" id="userYear">
+                    </div>
+                </div>
+
+                <div style="margin-top:20px; display:flex; gap:10px;">
+                    <button type="button" class="primary-btn" onclick="saveUser()">Enregistrer</button>
+                    <button type="button" class="primary-btn" style="background:#64748b;" onclick="closeModal('addModal')">Annuler</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="importModal" class="modal">
+        <div class="modal-content">
+            <h2 style="color:#1e3c72; margin-bottom:10px;">Importer via Excel</h2>
+            <p style="color:#666; font-size:0.9rem; margin-bottom:15px;">
+                Le fichier doit contenir les colonnes : <b>name, email, password</b>.<br>
+                Optionnel: <b>major, year</b> (étudiants) ou <b>department</b> (profs).
+            </p>
+            <form class="upload-form">
+                <div class="form-group">
+                    <label>Rôle des utilisateurs importés</label>
+                    <select id="importRole">
+                        <option value="student">Étudiants</option>
+                        <option value="teacher">Enseignants</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <input type="file" id="excelFile" accept=".xlsx, .xls">
+                </div>
+                <div style="margin-top:20px; display:flex; gap:10px;">
+                    <button type="button" class="primary-btn" onclick="uploadExcel()">Uploader</button>
+                    <button type="button" class="primary-btn" style="background:#64748b;" onclick="closeModal('importModal')">Fermer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let currentTab = 'student';
+        let allUsers = [];
+
+        window.onload = () => loadUsers();
+
+        function switchTab(role) {
+            currentTab = role;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            toggleFields();
+            loadUsers();
+        }
+
+        function toggleFields() {
+            const role = document.getElementById('userRole').value;
+            document.getElementById('studentFields').style.display = (role === 'student' || currentTab === 'student') ? 'block' : 'none';
+        }
+
+        async function loadUsers() {
+            try {
+                const res = await fetch(`/api/admin/get_users/${currentTab}`);
+                allUsers = await res.json();
+                renderTable(allUsers);
+            } catch(e) { console.error(e); }
+        }
+
+        function renderTable(users) {
+            const tbody = document.getElementById('userTableBody');
+            tbody.innerHTML = users.map(u => `
+                <tr>
+                    <td>${u.full_name}</td>
+                    <td>${u.email}</td>
+                    <td>${currentTab === 'student' ? (u.major + ' ' + u.year) : (u.department || 'N/A')}</td>
+                    <td>
+                        <button class="action-btn btn-edit" onclick='editUser(${JSON.stringify(u)})'><i class="fas fa-edit"></i></button>
+                        <button class="action-btn btn-delete" onclick="deleteUser('${u._id}')"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function filterTable() {
+            const term = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = allUsers.filter(u => u.full_name.toLowerCase().includes(term) || u.email.toLowerCase().includes(term));
+            renderTable(filtered);
+        }
+
+        // --- CRUD OPERATIONS ---
+
+        async function saveUser() {
+            const id = document.getElementById('editUserId').value;
+            const data = {
+                role: document.getElementById('userRole').value,
+                full_name: document.getElementById('userName').value,
+                email: document.getElementById('userEmail').value,
+                password: document.getElementById('userPassword').value,
+                major: document.getElementById('userMajor').value,
+                year: document.getElementById('userYear').value
+            };
+
+            const url = id ? '/api/admin/update_user' : '/api/admin/add_user';
+            if(id) data.id = id;
+
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+            
+            if((await res.json()).success) {
+                closeModal('addModal');
+                loadUsers();
+            } else { alert('Erreur lors de l\'enregistrement'); }
+        }
+
+        async function deleteUser(id) {
+            if(!confirm("Supprimer cet utilisateur ?")) return;
+            await fetch('/api/admin/delete_user', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ id, role: currentTab })
+            });
+            loadUsers();
+        }
+
+        async function uploadExcel() {
+            const file = document.getElementById('excelFile').files[0];
+            const role = document.getElementById('importRole').value;
+            if(!file) return alert("Sélectionnez un fichier");
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('role', role);
+
+            const btn = event.target;
+            btn.innerText = "Traitement...";
+            
+            const res = await fetch('/api/admin/upload_users', { method: 'POST', body: formData });
+            const data = await res.json();
+
+            if(data.success) {
+                alert(`✅ ${data.count} utilisateurs importés avec succès !`);
+                closeModal('importModal');
+                if(currentTab === role) loadUsers();
+                else switchTab(role);
+            } else {
+                alert("Erreur: " + data.error);
+            }
+            btn.innerText = "Uploader";
+        }
+
+        // --- UTILS ---
+        function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+        
+        function editUser(u) {
+            document.getElementById('editUserId').value = u._id;
+            document.getElementById('modalTitle').innerText = "Modifier Utilisateur";
+            document.getElementById('userRole').value = currentTab;
+            document.getElementById('userName').value = u.full_name;
+            document.getElementById('userEmail').value = u.email;
+            document.getElementById('userMajor').value = u.major || '';
+            document.getElementById('userYear').value = u.year || '';
+            openModal('addModal');
+        }
+    </script>
+</body>
+</html>

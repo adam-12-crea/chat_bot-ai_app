@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Mes Notes</title>
+    <link rel="stylesheet" href="/static/dashboard.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .page-container { max-width: 1300px; margin: 40px auto; padding: 20px; }
+        
+        /* TABS (For Majors) */
+        .tabs-container { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #334155; padding-bottom: 10px; }
+        .tab-btn {
+            background: #1e293b; color: #94a3b8; padding: 10px 20px; border: none; border-radius: 8px 8px 0 0;
+            cursor: pointer; font-weight: bold; font-size: 1rem; transition: 0.2s;
+        }
+        .tab-btn.active { background: #3b82f6; color: white; }
+
+        /* TABLE STYLES */
+        .notes-table-wrapper { overflow-x: auto; background: #1e293b; border-radius: 12px; border: 1px solid #334155; }
+        table { width: 100%; border-collapse: collapse; min-width: 1000px; }
+        
+        th, td { padding: 15px; text-align: center; border-bottom: 1px solid #334155; color: #cbd5e1; white-space: nowrap; }
+        th { background: #0f172a; color: white; font-size: 0.9rem; text-transform: uppercase; }
+        
+        /* Specific Columns */
+        .col-subject { text-align: left; font-weight: bold; color: white; position: sticky; left: 0; background: #1e293b; z-index: 10; border-right: 2px solid #334155; }
+        tr:hover .col-subject { background: #263345; } /* Match hover */
+        
+        .col-final { font-weight: bold; color: #fbbf24; background: rgba(251, 191, 36, 0.05); }
+        
+        /* STATUS BADGES */
+        .statut-v { color: #22c55e; font-weight: bold; background: rgba(34, 197, 94, 0.1); padding: 5px 10px; border-radius: 15px; }
+        .statut-r { color: #f97316; font-weight: bold; background: rgba(249, 115, 22, 0.1); padding: 5px 10px; border-radius: 15px; }
+        .statut-f { color: #ef4444; font-weight: bold; background: rgba(239, 68, 68, 0.1); padding: 5px 10px; border-radius: 15px; }
+
+        /* SUMMARY CARD */
+        .summary-card {
+            margin-top: 30px; background: linear-gradient(135deg, #1e293b, #0f172a);
+            padding: 25px; border-radius: 12px; border: 1px solid #334155;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .avg-display { font-size: 2.5rem; font-weight: bold; color: white; }
+        .avg-label { color: #94a3b8; font-size: 1.1rem; }
+    </style>
+</head>
+<body>
+    <div class="background-overlay"></div>
+   <header class="dashboard-header">
+    <div class="header-content">
+        <div class="logo-container">
+            <a href="{{ dashboard_link }}">
+                <img src="/static/uir logo.png" class="logo" alt="UIR Logo">
+            </a>
+        </div>
+
+        <div class="user-section">
+            <a href="{{ dashboard_link }}" class="header-link">
+                <i class="fas fa-home"></i> Accueil
+            </a>
+            
+            {% if user_role == 'student' %}
+            <a href="emploi-temps.html" class="header-link">
+                <i class="fas fa-calendar-alt"></i> Emploi du temps
+            </a>
+            {% endif %}
+
+            <a href="profil.html" class="header-link">
+                <i class="fas fa-user"></i> Profil
+            </a>
+
+            <a href="/api/logout" class="header-link danger-btn">
+                <i class="fas fa-sign-out-alt"></i> Déconnexion
+            </a>
+        </div>
+    </div>
+</header>
+
+    <div class="page-container">
+        <h1 style="color:white; margin-bottom:30px;">📊 Mes Résultats & Notes</h1>
+        
+        <div class="tabs-container" id="majorTabs">
+            </div>
+
+        <div id="notesContent">
+            <div style="color:#94a3b8; text-align:center; padding:40px;">
+                <i class="fas fa-spinner fa-spin"></i> Chargement des notes...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allMarksData = {};
+
+        window.onload = async function() {
+            try {
+                const res = await fetch('/api/student/marks');
+                allMarksData = await res.json();
+                
+                if (Object.keys(allMarksData).length === 0) {
+                    document.getElementById('notesContent').innerHTML = '<div style="color:#ef4444; text-align:center;">Aucune note disponible.</div>';
+                    return;
+                }
+                
+                renderTabs();
+            } catch (e) { console.error(e); }
+        };
+
+        function renderTabs() {
+            const tabsContainer = document.getElementById('majorTabs');
+            const majors = Object.keys(allMarksData);
+            
+            tabsContainer.innerHTML = '';
+            
+            majors.forEach((major, index) => {
+                const btn = document.createElement('button');
+                btn.className = `tab-btn ${index === 0 ? 'active' : ''}`;
+                btn.innerText = major;
+                btn.onclick = () => switchTab(major, btn);
+                tabsContainer.appendChild(btn);
+            });
+
+            // Render first major by default
+            if(majors.length > 0) renderMajor(majors[0]);
+        }
+
+        function switchTab(major, btnElement) {
+            // Update Active Class
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            btnElement.classList.add('active');
+            
+            renderMajor(major);
+        }
+
+        function renderMajor(majorName) {
+            const data = allMarksData[majorName];
+            const contentDiv = document.getElementById('notesContent');
+            
+            if(!data || data.subjects.length === 0) {
+                contentDiv.innerHTML = '<div style="color:#94a3b8; text-align:center;">Aucune matière trouvée pour cette filière.</div>';
+                return;
+            }
+
+            // 1. Build Table Header dynamically (Find max columns)
+            // We need to know the superset of lab/proj columns to align the table properly? 
+            // Or simpler: Just render specific columns per row? 
+            // Better: "Labs" and "Projets" are specific to the subject. 
+            // We will render the dynamic columns inside a single wide cell or scrollable area?
+            // "The one going lab1 lab 2... is the mark" -> This implies separate columns.
+            // Since different subjects have different labs, we can't have a unified header for "Lab 1".
+            // Solution: We create a generic "Détails Labs/Projets" column in the header, 
+            // and inside the cell we list them "L1: 15 | L2: 14".
+            // WAIT, the prompt says "The one going lab1 lab 2...". 
+            // Let's implement a flexible scrolling row.
+            
+            let rowsHtml = '';
+            
+            data.subjects.forEach(sub => {
+                // Build dynamic cells for labs/projects
+                let dynamicCells = sub.columns.map(c => 
+                    `<span style="display:inline-block; padding:0 8px; border-right:1px solid #475569;">
+                        <span style="font-size:0.75rem; color:#94a3b8;">${c.name}</span><br>${c.val}
+                     </span>`
+                ).join('');
+
+                // Status Badge
+                let statusBadge = `<span class="statut-v">V</span>`;
+                if(sub.statut === 'R') statusBadge = `<span class="statut-r">R</span>`;
+                if(sub.statut === 'F') statusBadge = `<span class="statut-f">F</span>`;
+
+                rowsHtml += `
+                <tr>
+                    <td class="col-subject">${sub.name}</td>
+                    <td style="text-align:left; min-width:200px;">${dynamicCells || '-'}</td>
+                    <td>${sub.moy_labs}</td>
+                    <td>${sub.moy_projs}</td>
+                    <td>${sub.cc}</td>
+                    <td>${sub.cf}</td>
+                    <td class="col-final">${sub.final_grade}</td>
+                    <td>${sub.ratt}</td>
+                    <td>${statusBadge}</td>
+                </tr>`;
+            });
+
+            contentDiv.innerHTML = `
+                <div class="notes-table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th class="col-subject">Matière</th>
+                                <th style="text-align:left;">Détails (Labs/Projets)</th>
+                                <th>Moy. Labs</th>
+                                <th>Moy. Proj</th>
+                                <th>CC</th>
+                                <th>CF</th>
+                                <th>Note Finale</th>
+                                <th>Ratt</th>
+                                <th>Statut</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rowsHtml}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="summary-card">
+                    <div>
+                        <div class="avg-label">Moyenne Générale (Semestre/Année)</div>
+                        <div style="color:#64748b; font-size:0.9rem;">Calculée selon les règles LMD (V/R/F)</div>
+                    </div>
+                    <div class="avg-display" style="color: ${data.general_average >= 10 ? '#22c55e' : '#ef4444'}">
+                        ${data.general_average} / 20
+                    </div>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>

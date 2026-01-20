@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Mes Absences - Student Portal</title>
+    <link rel="stylesheet" href="/static/dashboard.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .page-container { max-width: 1000px; margin: 40px auto; padding: 20px; }
+        
+        .summary-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;
+        }
+
+        .subject-card {
+            background: #1e293b; border: 1px solid #334155; border-radius: 12px;
+            overflow: hidden; transition: 0.2s; display: flex; flex-direction: column;
+        }
+        .subject-card:hover { border-color: #3b82f6; transform: translateY(-3px); }
+
+        .card-header {
+            padding: 20px; background: rgba(255,255,255,0.02); border-bottom: 1px solid #334155;
+            display: flex; justify-content: space-between; align-items: start;
+        }
+        
+        .subject-title { font-size: 1.1rem; font-weight: bold; color: white; margin-bottom: 5px; }
+        .subject-stats { color: #94a3b8; font-size: 0.9rem; }
+
+        .absence-badge {
+            background: #334155; color: #cbd5e1; padding: 5px 10px; border-radius: 6px;
+            font-size: 0.85rem; font-weight: bold; white-space: nowrap;
+        }
+        .absence-badge.warning { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid #ef4444; }
+
+        .history-list { padding: 0; margin: 0; list-style: none; max-height: 200px; overflow-y: auto; }
+        .history-item {
+            padding: 12px 20px; border-bottom: 1px solid #334155;
+            display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem;
+        }
+        .history-item:last-child { border-bottom: none; }
+        
+        .status-dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+        .dot-green { background: #22c55e; box-shadow: 0 0 5px #22c55e; }
+        .dot-red { background: #ef4444; box-shadow: 0 0 5px #ef4444; }
+
+        .empty-state { text-align: center; color: #64748b; margin-top: 50px; font-size: 1.1rem; }
+    </style>
+</head>
+<body>
+    <div class="background-overlay"></div>
+    <header class="dashboard-header">
+    <div class="header-content">
+        <div class="logo-container">
+            <a href="{{ dashboard_link }}">
+                <img src="/static/uir logo.png" class="logo" alt="UIR Logo">
+            </a>
+        </div>
+
+        <div class="user-section">
+            <a href="{{ dashboard_link }}" class="header-link">
+                <i class="fas fa-home"></i> Accueil
+            </a>
+            
+            {% if user_role == 'student' %}
+            <a href="emploi-temps.html" class="header-link">
+                <i class="fas fa-calendar-alt"></i> Emploi du temps
+            </a>
+            {% endif %}
+
+            <a href="profil.html" class="header-link">
+                <i class="fas fa-user"></i> Profil
+            </a>
+
+            <a href="/api/logout" class="header-link danger-btn">
+                <i class="fas fa-sign-out-alt"></i> Déconnexion
+            </a>
+        </div>
+    </div>
+</header>
+
+    <div class="page-container">
+        <h1 style="color: white; margin-bottom: 10px;">📉 Suivi d'Assiduité</h1>
+        <p style="color: #94a3b8; margin-bottom: 30px;">Retrouvez ici le détail de vos absences par matière.</p>
+
+        <div id="attendanceContainer" class="summary-grid">
+            <div style="color:white;">Chargement...</div>
+        </div>
+    </div>
+
+    <script>
+        window.onload = async function() {
+            const container = document.getElementById('attendanceContainer');
+            try {
+                const res = await fetch('/api/student/get_attendance');
+                const data = await res.json();
+
+                if (data.length === 0) {
+                    container.innerHTML = `
+                    <div class="empty-state" style="grid-column: 1/-1;">
+                        <i class="fas fa-check-circle" style="font-size: 3rem; color: #22c55e; margin-bottom: 15px;"></i><br>
+                        Aucune donnée de présence enregistrée pour le moment.
+                    </div>`;
+                    return;
+                }
+
+                container.innerHTML = '';
+                
+                data.forEach(sub => {
+                    const isWarning = sub.hours_absent > 0;
+                    const badgeClass = isWarning ? 'absence-badge warning' : 'absence-badge';
+                    const badgeText = sub.hours_absent > 0 ? `${sub.hours_absent}h Abs.` : '0h Abs.';
+
+                    let historyHtml = '<ul class="history-list">';
+                    sub.history.forEach(h => {
+                        const dotClass = h.status === 'present' ? 'dot-green' : 'dot-red';
+                        const statusText = h.status === 'present' ? 'Présent' : 'Absent';
+                        const color = h.status === 'present' ? '#94a3b8' : '#ef4444';
+                        
+                        historyHtml += `
+                        <li class="history-item">
+                            <span style="color:white;">${h.date} <small style="color:#64748b;">(${h.type})</small></span>
+                            <span style="color:${color}; font-weight:bold;">
+                                <span class="status-dot ${dotClass}"></span>${statusText}
+                            </span>
+                        </li>`;
+                    });
+                    historyHtml += '</ul>';
+
+                    container.innerHTML += `
+                    <div class="subject-card">
+                        <div class="card-header">
+                            <div>
+                                <div class="subject-title">${sub.subject}</div>
+                                <div class="subject-stats">${sub.total_sessions} séances totales</div>
+                            </div>
+                            <div class="${badgeClass}">${badgeText}</div>
+                        </div>
+                        ${historyHtml}
+                    </div>`;
+                });
+
+            } catch (e) {
+                console.error(e);
+                container.innerHTML = `<div style="color:red;">Erreur de chargement des données.</div>`;
+            }
+        }
+    </script>
+</body>
+</html>

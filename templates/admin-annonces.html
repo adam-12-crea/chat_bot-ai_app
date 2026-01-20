@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Gestion des Annonces - Admin</title>
+    <link rel="stylesheet" href="/static/dashboard.css">
+    <link rel="stylesheet" href="/static/pages.css">
+    <style>
+        /* Small fix for the file input styling */
+        input[type="file"] {
+            background: #0f172a;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #334155;
+            color: #94a3b8;
+            width: 100%;
+        }
+        .history-item {
+            background: #1e293b;
+            padding: 15px;
+            border-bottom: 1px solid #334155;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .history-item:last-child { border-bottom: none; }
+    </style>
+</head>
+<body>
+    <div class="background-overlay"></div>
+    <header class="dashboard-header">
+    <div class="header-content">
+        <div class="logo-container">
+            <a href="{{ dashboard_link }}">
+                <img src="/static/uir logo.png" class="logo" alt="UIR Logo">
+            </a>
+        </div>
+
+        <div class="user-section">
+            <a href="{{ dashboard_link }}" class="header-link">
+                <i class="fas fa-home"></i> Accueil
+            </a>
+            
+            {% if user_role == 'student' %}
+            <a href="emploi-temps.html" class="header-link">
+                <i class="fas fa-calendar-alt"></i> Emploi du temps
+            </a>
+            {% endif %}
+
+            <a href="profil.html" class="header-link">
+                <i class="fas fa-user"></i> Profil
+            </a>
+
+            <a href="/api/logout" class="header-link danger-btn">
+                <i class="fas fa-sign-out-alt"></i> Déconnexion
+            </a>
+        </div>
+    </div>
+</header>
+
+    <main class="page-main">
+        <div class="page-container">
+            <div class="title-section">
+                <h1 class="page-title">📢 Publier une Annonce</h1>
+            </div>
+
+            <section class="panel">
+                <div class="panel-header">
+                    <h2>Nouvelle annonce</h2>
+                    <small>Visible par tous les étudiants instantanément</small>
+                </div>
+                <div class="panel-body upload-form">
+                    <div class="form-group">
+                        <label for="annTitle">Titre de l'annonce</label>
+                        <input type="text" id="annTitle" placeholder="Ex: Rattrapage, Événement BDE...">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="annContent">Message</label>
+                        <textarea id="annContent" rows="5" placeholder="Écrivez votre message ici..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="annFile">Image ou Document (Optionnel)</label>
+                        <input type="file" id="annFile" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
+                        <small style="color:#64748b; display:block; margin-top:5px;">Formats acceptés: Images, PDF, Word</small>
+                    </div>
+                    
+                    <button class="primary-btn" id="annPublishBtn" onclick="publishAnnouncement()">
+                        🚀 Publier l'annonce
+                    </button>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div class="panel-header">
+                    <h2>Historique (En ligne)</h2>
+                    <small>Ce que les étudiants voient actuellement</small>
+                </div>
+                <div class="panel-body" id="historyContainer">
+                    <p style="color:#94a3b8; font-style:italic;">Chargement...</p>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script>
+        // 1. LOAD HISTORY ON START
+        window.onload = loadHistory;
+
+        async function loadHistory() {
+            const container = document.getElementById('historyContainer');
+            try {
+                // We use the student API to see exactly what is public
+                const res = await fetch('/api/student/get_announcements');
+                const data = await res.json();
+                
+                if(data.length === 0) {
+                    container.innerHTML = '<p style="padding:15px; color:#94a3b8;">Aucune annonce publiée.</p>';
+                    return;
+                }
+
+                container.innerHTML = data.map(item => `
+                    <div class="history-item">
+                        <div>
+                            <strong style="color:white; font-size:1.1rem;">${item.title}</strong>
+                            <span style="color:#64748b; font-size:0.85rem; margin-left:10px;">${item.date_str}</span>
+                            <br>
+                            <small style="color:#cbd5e1;">${item.content.substring(0, 80)}...</small>
+                            ${item.file_path ? `<div style="color:#3b82f6; font-size:0.8rem; margin-top:5px;">📎 Fichier joint</div>` : ''}
+                        </div>
+                    </div>
+                `).join('');
+
+            } catch(e) { 
+                console.error(e);
+                container.innerHTML = '<p style="color:#ef4444; padding:15px;">Erreur de chargement.</p>';
+            }
+        }
+
+        // 2. PUBLISH FUNCTION
+        async function publishAnnouncement() {
+            const title = document.getElementById('annTitle').value;
+            const content = document.getElementById('annContent').value;
+            const fileInput = document.getElementById('annFile');
+            const btn = document.getElementById('annPublishBtn');
+
+            if(!title || !content) return alert("Le titre et le message sont obligatoires.");
+
+            // Create FormData to send text + file together
+            const formData = new FormData();
+            formData.append('title', title);
+            formData.append('content', content);
+            
+            if(fileInput.files[0]) {
+                formData.append('file', fileInput.files[0]);
+            }
+
+            // Visual Feedback
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Envoi...';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/admin/post_announcement', {
+                    method: 'POST',
+                    body: formData // No headers needed, browser sets correct multipart/form-data
+                });
+                const data = await res.json();
+                
+                if(data.success) {
+                    alert("✅ Annonce publiée avec succès !");
+                    // Clear form
+                    document.getElementById('annTitle').value = '';
+                    document.getElementById('annContent').value = '';
+                    document.getElementById('annFile').value = '';
+                    // Refresh List
+                    loadHistory();
+                } else {
+                    alert("❌ Erreur: " + data.error);
+                }
+            } catch(e) {
+                console.error(e);
+                alert("❌ Erreur serveur.");
+            }
+
+            // Reset Button
+            btn.innerHTML = '🚀 Publier l\'annonce';
+            btn.disabled = false;
+        }
+    </script>
+</body>
+</html>

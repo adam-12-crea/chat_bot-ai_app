@@ -1,0 +1,11 @@
+flask
+pymongo
+python-dotenv
+pandas
+openpyxl
+werkzeug
+pypdf
+google-generativeai
+langchain
+langchain-google-genai
+langchain-core

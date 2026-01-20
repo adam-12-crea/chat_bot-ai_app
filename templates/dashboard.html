@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Étudiant</title>
+    <link rel="stylesheet" href="/static/dashboard.css">
+    <style>
+        /* Specific Styles for Announcements in Dashboard */
+        .announcement-section {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+        
+        .latest-announcement-card {
+            background: linear-gradient(145deg, #1e293b, #0f172a);
+            border: 1px solid #334155;
+            border-left: 5px solid #3b82f6;
+            border-radius: 12px;
+            padding: 25px;
+            color: white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            position: relative;
+        }
+
+        .ann-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .ann-tag {
+            background: #3b82f6;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .ann-date { color: #94a3b8; font-size: 0.9rem; }
+        .ann-body h3 { font-size: 1.5rem; margin: 0 0 10px 0; color: white; }
+        .ann-body p { color: #cbd5e1; line-height: 1.6; white-space: pre-wrap; }
+        .ann-media { margin-top: 15px; padding-top: 15px; border-top: 1px solid #334155; }
+        .ann-media img { max-width: 100%; max-height: 300px; border-radius: 8px; cursor: pointer; }
+        .ann-file-link { display: inline-flex; align-items: center; background: #334155; padding: 10px 15px; border-radius: 6px; color: white; text-decoration: none; transition: 0.2s; }
+        .ann-file-link:hover { background: #475569; }
+
+        .see-more-btn {
+            background: transparent; border: 1px solid #3b82f6; color: #3b82f6;
+            padding: 8px 16px; border-radius: 6px; cursor: pointer; margin-top: 15px;
+            font-weight: bold; transition: 0.2s;
+        }
+        .see-more-btn:hover { background: #3b82f6; color: white; }
+
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: #0f172a; width: 90%; max-width: 800px; max-height: 85vh; border-radius: 12px; border: 1px solid #334155; display: flex; flex-direction: column; overflow: hidden; }
+        .modal-header { padding: 20px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; background: #1e293b; }
+        .modal-header h2 { margin: 0; color: white; }
+        .close-modal { background: none; border: none; color: #94a3b8; font-size: 1.5rem; cursor: pointer; }
+        .modal-body { padding: 20px; overflow-y: auto; }
+        .archive-item { background: #1e293b; padding: 20px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #334155; }
+    </style>
+</head>
+<body>
+    <div class="background-overlay"></div>
+    <header class="dashboard-header">
+    <div class="header-content">
+        <div class="logo-container">
+            <a href="{{ dashboard_link }}">
+                <img src="/static/uir logo.png" class="logo" alt="UIR Logo">
+            </a>
+        </div>
+
+        <div class="user-section">
+            <a href="{{ dashboard_link }}" class="header-link">
+                <i class="fas fa-home"></i> Accueil
+            </a>
+            
+            {% if user_role == 'student' %}
+            <a href="emploi-temps.html" class="header-link">
+                <i class="fas fa-calendar-alt"></i> Emploi du temps
+            </a>
+            {% endif %}
+
+            <a href="profil.html" class="header-link">
+                <i class="fas fa-user"></i> Profil
+            </a>
+
+            <a href="/api/logout" class="header-link danger-btn">
+                <i class="fas fa-sign-out-alt"></i> Déconnexion
+            </a>
+        </div>
+    </div>
+</header>
+
+    <main class="dashboard-main">
+        <div class="dashboard-container">
+            <h1 class="dashboard-title">
+                Bienvenue dans votre espace étudiant - {{ user_name.split()[0] if user_name else 'Étudiant' }}
+            </h1>
+            
+            <div class="dashboard-grid">
+                <button class="dashboard-card" onclick="window.location.href='cours.html'"><div class="card-icon">📚</div><h2 class="card-title">Cours</h2></button>
+                <button class="dashboard-card" onclick="window.location.href='chat.html'"><div class="card-icon">🤖</div><h2 class="card-title">Assistant AI</h2></button>
+                <button class="dashboard-card" onclick="window.location.href='quiz.html'"><div class="card-icon">📝</div><h2 class="card-title">Quiz</h2></button>
+                <button class="dashboard-card" onclick="window.location.href='study-planner.html'"><div class="card-icon">📅</div><h2 class="card-title">Planner</h2></button>
+                <button class="dashboard-card" onclick="window.location.href='summarize.html'"><div class="card-icon">📄</div><h2 class="card-title">Summarize</h2></button>
+                <button class="dashboard-card" onclick="window.location.href='documents.html'"><div class="card-icon">📋</div><h2 class="card-title">Documents</h2></button>
+                <button class="dashboard-card" onclick="window.location.href='notes.html'"><div class="card-icon">📊</div><h2 class="card-title">Notes</h2></button>
+                <button class="dashboard-card" onclick="window.location.href='presence.html'"><div class="card-icon">✅</div><h2 class="card-title">Présence</h2></button>
+            </div>
+        </div>
+
+        <div class="announcement-section">
+            <h2 style="color:white; margin-bottom: 20px; border-bottom: 1px solid #334155; padding-bottom: 10px;">📢 Dernières Annonces</h2>
+            <div id="featuredAnnouncement">
+                <p style="color:#94a3b8; font-style:italic;">Chargement des annonces...</p>
+            </div>
+            <div id="seeMoreContainer" style="text-align: center; display: none;">
+                <button class="see-more-btn" onclick="openAnnModal()">Voir tout l'historique</button>
+            </div>
+        </div>
+    </main>
+
+    <div class="modal-overlay" id="annModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Historique des Annonces</h2>
+                <button class="close-modal" onclick="closeAnnModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="annModalBody"></div>
+        </div>
+    </div>
+
+    <div class="bottom-actions">
+        <button class="ai-assistant-bubble" onclick="window.location.href='chat.html'">
+            <span class="ai-text">AI</span>
+        </button>
+    </div>
+
+    <script>
+        let allAnnouncements = [];
+
+        window.onload = async function() {
+            try {
+                const res = await fetch('/api/student/get_announcements');
+                allAnnouncements = await res.json();
+                renderFeatured();
+            } catch (e) {
+                console.error("Error loading announcements:", e);
+                document.getElementById('featuredAnnouncement').innerHTML = '<p style="color:#ef4444">Impossible de charger les annonces.</p>';
+            }
+        };
+
+        function createAnnouncementHTML(ann) {
+            let mediaHTML = '';
+            if (ann.file_path) {
+                if (ann.file_type === 'image') {
+                    mediaHTML = `<div class="ann-media"><img src="${ann.file_path}" alt="Image annonce"></div>`;
+                } else {
+                    mediaHTML = `<div class="ann-media"><a href="${ann.file_path}" target="_blank" class="ann-file-link">📎 Télécharger la pièce jointe</a></div>`;
+                }
+            }
+
+            return `
+                <div class="ann-header">
+                    <span class="ann-tag">Info Administration</span>
+                    <span class="ann-date">${ann.date_str}</span>
+                </div>
+                <div class="ann-body">
+                    <h3>${ann.title}</h3>
+                    <p>${ann.content}</p>
+                    ${mediaHTML}
+                </div>
+            `;
+        }
+
+        function renderFeatured() {
+            const container = document.getElementById('featuredAnnouncement');
+            if (allAnnouncements.length === 0) {
+                container.innerHTML = '<p style="color:#94a3b8;">Aucune annonce pour le moment.</p>';
+                return;
+            }
+            container.innerHTML = `<div class="latest-announcement-card">${createAnnouncementHTML(allAnnouncements[0])}</div>`;
+            if (allAnnouncements.length > 1) {
+                document.getElementById('seeMoreContainer').style.display = 'block';
+            }
+        }
+
+        function openAnnModal() {
+            const modalBody = document.getElementById('annModalBody');
+            modalBody.innerHTML = '';
+            allAnnouncements.forEach(ann => {
+                modalBody.innerHTML += `<div class="archive-item">${createAnnouncementHTML(ann)}</div>`;
+            });
+            document.getElementById('annModal').style.display = 'flex';
+        }
+
+        function closeAnnModal() { document.getElementById('annModal').style.display = 'none'; }
+        window.onclick = function(event) { if (event.target == document.getElementById('annModal')) closeAnnModal(); }
+    </script>
+</body>
+</html>

@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion de Présence - Enseignant</title>
+    <link rel="stylesheet" href="/static/dashboard.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .page-container { max-width: 1000px; margin: 40px auto; padding: 0 20px; }
+        
+        /* CLASS CARD STYLES */
+        .class-card {
+            background: rgba(30, 41, 59, 0.95); /* Dark Glass */
+            border: 1px solid #334155; 
+            border-radius: 12px;
+            margin-bottom: 20px; 
+            overflow: hidden; 
+            transition: 0.3s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .class-header {
+            padding: 20px; display: flex; justify-content: space-between; align-items: center;
+            cursor: pointer; background: rgba(255,255,255,0.02);
+            transition: background 0.2s;
+        }
+        .class-header:hover { background: rgba(255,255,255,0.05); }
+        
+        .class-info h3 { margin: 0 0 5px 0; color: white; font-size: 1.2rem; }
+        .class-meta { color: #94a3b8; font-size: 0.9rem; display: flex; gap: 15px; flex-wrap: wrap; }
+        .tag { padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: bold; white-space: nowrap; }
+        .tag-tp { background: #3b82f6; color: white; } /* Blue */
+        .tag-td { background: #10b981; color: white; } /* Green */
+        .tag-cm { background: #8b5cf6; color: white; } /* Purple */
+        .tag-group { background: #334155; color: #cbd5e1; }
+
+        .status-indicator {
+            padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: bold; min-width: 80px; text-align: center;
+        }
+        .status-pending { background: rgba(251, 191, 36, 0.2); color: #fbbf24; border: 1px solid #fbbf24; }
+        .status-done { background: rgba(34, 197, 94, 0.2); color: #22c55e; border: 1px solid #22c55e; }
+        .status-postponed { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid #ef4444; }
+
+        /* EXPANDABLE BODY */
+        .class-body {
+            display: none; padding: 20px; border-top: 1px solid #334155; background: #0f172a;
+        }
+        
+        /* STUDENT LIST GRID */
+        .student-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-bottom: 20px; }
+        
+        .student-item {
+            background: #1e293b; border: 1px solid #334155; padding: 12px; border-radius: 8px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .student-name { color: white; font-size: 0.9rem; font-weight: 500; }
+        
+        /* TOGGLE SWITCH */
+        .presence-wrapper { display: flex; align-items: center; gap: 10px; }
+        .presence-label { font-size: 0.75rem; font-weight: bold; text-transform: uppercase; }
+        
+        .presence-toggle {
+            cursor: pointer; width: 44px; height: 24px; 
+            background: #ef4444; /* Default Red (Absent) */
+            border-radius: 20px; position: relative; transition: 0.3s;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .presence-toggle::after {
+            content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px;
+            background: white; border-radius: 50%; transition: 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+        }
+        
+        /* Present State */
+        .presence-toggle.present { background: #22c55e; }
+        .presence-toggle.present::after { transform: translateX(20px); }
+
+        .label-absent { color: #ef4444; }
+        .label-present { color: #22c55e; }
+
+        /* ACTION BAR */
+        .action-bar { 
+            display: flex; justify-content: space-between; align-items: center; 
+            margin-top: 20px; padding-top: 20px; border-top: 1px solid #334155; 
+        }
+        
+        .btn-postpone { 
+            color: #ef4444; background: transparent; border: 1px solid #ef4444; 
+            padding: 10px 20px; border-radius: 8px; cursor: pointer; transition: 0.2s; 
+            font-weight: 600;
+        }
+        .btn-postpone:hover { background: rgba(239, 68, 68, 0.1); }
+        
+        .btn-submit {
+            background: #3b82f6; color: white; border: none; padding: 12px 30px;
+            border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s;
+            box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);
+        }
+        .btn-submit:hover { background: #2563eb; transform: translateY(-1px); }
+
+    </style>
+</head>
+<body>
+    <div class="background-overlay"></div>
+    
+    <header class="dashboard-header">
+        <div class="header-content">
+            <div class="logo-container">
+                <a href="{{ dashboard_link }}">
+                    <img src="/static/uir logo.png" class="logo" alt="UIR Logo">
+                </a>
+            </div>
+            <div class="user-section">
+                <a href="{{ dashboard_link }}" class="header-link"><i class="fas fa-home"></i> Accueil</a>
+                <a href="profil.html" class="header-link"><i class="fas fa-user"></i> Profil</a>
+                <a href="/api/logout" class="header-link danger-btn"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="page-container">
+        <h1 style="color: white; margin-bottom: 10px;">📋 Feuilles de Présence</h1>
+        <p style="color: #94a3b8; margin-bottom: 30px;">
+            Cliquez sur un cours pour faire l'appel. Les listes sont générées selon les groupes (TP/TD).
+        </p>
+
+        <div id="sessionsList">
+            <div style="color:white; text-align:center; padding: 20px;">
+                <i class="fas fa-spinner fa-spin"></i> Chargement des cours...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSessions = [];
+
+        window.onload = loadSessions;
+
+        async function loadSessions() {
+            try {
+                const res = await fetch('/api/teacher/get_presence_sessions');
+                const sessions = await res.json();
+                currentSessions = sessions;
+                
+                const container = document.getElementById('sessionsList');
+                container.innerHTML = '';
+
+                if (sessions.length === 0) {
+                    container.innerHTML = `
+                        <div style="background:#1e293b; padding:30px; border-radius:12px; text-align:center; color:#94a3b8; border:1px solid #334155;">
+                            <h3>Aucun cours programmé</h3>
+                            <p>Assurez-vous que l'Admin a bien uploadé les emplois du temps (EDT).</p>
+                        </div>`;
+                    return;
+                }
+
+                sessions.forEach((sess, index) => {
+                    let statusHtml, statusText;
+                    if (sess.status === 'pending') {
+                        statusHtml = '<span class="status-indicator status-pending">À faire</span>';
+                    } else if (sess.status === 'submitted') {
+                        statusHtml = '<span class="status-indicator status-done">Validé</span>';
+                    } else {
+                        statusHtml = '<span class="status-indicator status-postponed">Reporté</span>';
+                    }
+
+                    const html = `
+                    <div class="class-card" id="card-${sess.session_id}">
+                        <div class="class-header" onclick="toggleSession('${sess.session_id}', ${index})">
+                            <div class="class-info">
+                                <h3>${sess.subject}</h3>
+                                <div class="class-meta">
+                                    <span class="tag tag-${sess.type.toLowerCase()}">${sess.type}</span>
+                                    <span class="tag tag-group">${sess.major} - ${sess.group}</span>
+                                    <span><i class="far fa-calendar-alt"></i> ${sess.week}</span>
+                                </div>
+                            </div>
+                            ${statusHtml}
+                        </div>
+                        <div class="class-body" id="body-${sess.session_id}">
+                            ${sess.status === 'pending' 
+                                ? `<div id="students-${sess.session_id}" style="color:#94a3b8; text-align:center;">
+                                     <i class="fas fa-sync fa-spin"></i> Chargement de la liste...
+                                   </div>` 
+                                : '<div style="color:#22c55e; text-align:center; font-weight:bold;">✅ Feuille de présence déjà soumise.</div>'
+                            }
+                        </div>
+                    </div>`;
+                    container.innerHTML += html;
+                });
+
+            } catch (err) {
+                console.error(err);
+                document.getElementById('sessionsList').innerHTML = '<div style="color:red; text-align:center;">Erreur serveur: Impossible de charger les sessions.</div>';
+            }
+        }
+
+        async function toggleSession(sessionId, index) {
+            const body = document.getElementById(`body-${sessionId}`);
+            const sess = currentSessions[index];
+            
+            // Toggle Display
+            if (body.style.display === 'block') {
+                body.style.display = 'none';
+                return;
+            }
+            body.style.display = 'block';
+
+            // Only fetch if pending
+            if (sess.status !== 'pending') return;
+
+            const studentContainer = document.getElementById(`students-${sessionId}`);
+            
+            // Fetch only if strictly needed (prevent refetching on toggle close/open)
+            if (!studentContainer.dataset.loaded) {
+                try {
+                    console.log("Fetching students with:", {
+                        major: sess.major,
+                        year: "4", // Hardcoded based on your DB setup
+                        group: sess.group
+                    });
+
+                    // We send the request
+                    const res = await fetch('/api/teacher/get_students_for_session', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            major: sess.major,
+                            year: "4", // Ensure this matches DB format (String "4")
+                            group: sess.group
+                        })
+                    });
+                    
+                    const students = await res.json();
+                    
+                    if(students.length === 0) {
+                        studentContainer.innerHTML = `
+                            <div style="padding:20px; color:#ef4444;">
+                                ⚠️ Aucun étudiant trouvé pour <b>${sess.major} / ${sess.group}</b>.
+                                <br><small>Vérifiez que les étudiants sont bien assignés à ce groupe dans la base de données.</small>
+                            </div>`;
+                    } else {
+                        renderStudentList(studentContainer, students, sessionId, index);
+                        studentContainer.dataset.loaded = "true"; // Mark as loaded
+                    }
+
+                } catch (e) {
+                    console.error(e);
+                    studentContainer.innerHTML = "<div style='color:red;'>Erreur de chargement des étudiants.</div>";
+                }
+            }
+        }
+
+        function renderStudentList(container, students, sessionId, index) {
+            let html = '<div class="student-list">';
+            students.forEach(s => {
+                html += `
+                <div class="student-item">
+                    <span class="student-name">${s.name}</span>
+                    <div class="presence-wrapper">
+                        <span class="presence-label label-present" id="label-${sessionId}-${s.id}">Présent</span>
+                        <div class="presence-toggle present" 
+                             onclick="togglePresence(this, '${sessionId}', '${s.id}')"
+                             data-student-id="${s.id}"
+                             id="toggle-${sessionId}-${s.id}">
+                        </div>
+                    </div>
+                </div>`;
+            });
+            html += '</div>';
+
+            // Action Buttons
+            html += `
+            <div class="action-bar">
+                <button class="btn-postpone" onclick="submitSession('${sessionId}', true)">
+                    <i class="fas fa-clock"></i> Reporter le cours
+                </button>
+                <button class="btn-submit" onclick="submitSession('${sessionId}', false)">
+                    <i class="fas fa-check-circle"></i> Valider la présence
+                </button>
+            </div>`;
+            
+            container.innerHTML = html;
+        }
+
+        function togglePresence(el, sessionId, studentId) {
+            el.classList.toggle('present');
+            const label = document.getElementById(`label-${sessionId}-${studentId}`);
+            if (el.classList.contains('present')) {
+                label.innerText = "Présent";
+                label.className = "presence-label label-present";
+            } else {
+                label.innerText = "Absent";
+                label.className = "presence-label label-absent";
+            }
+        }
+
+        async function submitSession(sessionId, isPostponed) {
+            const sess = currentSessions.find(s => s.session_id === sessionId);
+            if (!sess) return;
+
+            const payload = {
+                session_id: sessionId,
+                subject: sess.subject,
+                type: sess.type,
+                group: sess.group,
+                week: sess.week,
+                postponed: isPostponed,
+                students: []
+            };
+
+            if (!isPostponed) {
+                const toggles = document.querySelectorAll(`[id^="toggle-${sessionId}-"]`);
+                toggles.forEach(t => {
+                    payload.students.push({
+                        id: t.getAttribute('data-student-id'),
+                        status: t.classList.contains('present') ? 'present' : 'absent',
+                        name: t.closest('.student-item').querySelector('.student-name').innerText
+                    });
+                });
+            }
+
+            if(confirm(isPostponed ? "Voulez-vous vraiment reporter ce cours ?" : "Confirmer la feuille de présence ?")) {
+                try {
+                    const res = await fetch('/api/teacher/submit_attendance', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(payload)
+                    });
+                    const data = await res.json();
+                    
+                    if (data.success) {
+                        // Success Animation or Reload
+                        const card = document.getElementById(`card-${sessionId}`);
+                        card.style.opacity = '0.5';
+                        card.querySelector('.status-indicator').innerText = "Validé";
+                        card.querySelector('.status-indicator').className = "status-indicator status-done";
+                        setTimeout(() => location.reload(), 500);
+                    } else {
+                        alert("Erreur: " + data.error);
+                    }
+                } catch (e) {
+                    alert("Erreur de connexion.");
+                }
+            }
+        }
+    </script>
+</body>
+</html>

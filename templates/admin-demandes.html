@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Administration - Demandes</title>
+    <link rel="stylesheet" href="/static/dashboard.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .page-container { max-width: 1200px; margin: 40px auto; padding: 20px; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #1e293b; border-radius: 8px; overflow: hidden; }
+        th, td { padding: 15px; text-align: left; border-bottom: 1px solid #334155; color: #cbd5e1; }
+        th { background: #0f172a; color: white; }
+        tr:hover { background: rgba(255,255,255,0.05); }
+
+        .btn-action { padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; margin-right: 5px; }
+        .btn-upload { background: #3b82f6; color: white; }
+        .btn-reject { background: #ef4444; color: white; }
+
+        /* UPLOAD MODAL */
+        .modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); z-index: 100; justify-content: center; align-items: center;
+        }
+        .modal-content {
+            background: #1e293b; padding: 30px; border-radius: 12px; width: 400px; border: 1px solid #334155;
+        }
+        .file-input { width: 100%; margin: 20px 0; background: #0f172a; padding: 10px; border: 1px solid #334155; color: white; }
+    </style>
+</head>
+<body>
+    <div class="background-overlay"></div>
+    <header class="dashboard-header">
+    <div class="header-content">
+        <div class="logo-container">
+            <a href="{{ dashboard_link }}">
+                <img src="/static/uir logo.png" class="logo" alt="UIR Logo">
+            </a>
+        </div>
+
+        <div class="user-section">
+            <a href="{{ dashboard_link }}" class="header-link">
+                <i class="fas fa-home"></i> Accueil
+            </a>
+            
+            {% if user_role == 'student' %}
+            <a href="emploi-temps.html" class="header-link">
+                <i class="fas fa-calendar-alt"></i> Emploi du temps
+            </a>
+            {% endif %}
+
+            <a href="profil.html" class="header-link">
+                <i class="fas fa-user"></i> Profil
+            </a>
+
+            <a href="/api/logout" class="header-link danger-btn">
+                <i class="fas fa-sign-out-alt"></i> Déconnexion
+            </a>
+        </div>
+    </div>
+</header>
+
+    <div class="page-container">
+        <h1 style="color:white;">📋 Gestion des Demandes de Documents</h1>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Étudiant</th>
+                    <th>Document</th>
+                    <th>Détails</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="requestsTable"></tbody>
+        </table>
+    </div>
+
+    <div id="uploadModal" class="modal">
+        <div class="modal-content">
+            <h3 style="color:white;">Traiter la demande</h3>
+            <p style="color:#94a3b8; font-size:0.9rem;">Veuillez téléverser le document signé pour l'étudiant.</p>
+            
+            <form id="uploadForm" onsubmit="handleProcess(event)">
+                <input type="hidden" id="reqId">
+                <input type="file" id="fileInput" class="file-input" required accept=".pdf,.jpg,.png">
+                
+                <div style="display:flex; gap:10px;">
+                    <button type="button" onclick="closeModal()" class="btn-action" style="background:#64748b; color:white;">Annuler</button>
+                    <button type="submit" class="btn-action btn-upload" style="flex:1;">📤 Envoyer à l'étudiant</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        window.onload = loadAdminRequests;
+
+        async function loadAdminRequests() {
+            const tbody = document.getElementById('requestsTable');
+            try {
+                const res = await fetch('/api/admin/get_all_requests');
+                const reqs = await res.json();
+                
+                tbody.innerHTML = '';
+                reqs.forEach(r => {
+                    let detailsTxt = '-';
+                    if(r.details && r.details.semester) detailsTxt = `${r.details.semester} (${r.details.year})`;
+
+                    let statusBadge = `<span style="color:#fbbf24">En attente</span>`;
+                    if(r.status === 'completed') statusBadge = `<span style="color:#22c55e">Traité</span>`;
+                    if(r.status === 'rejected') statusBadge = `<span style="color:#ef4444">Refusé</span>`;
+
+                    let actions = '';
+                    if(r.status === 'pending') {
+                        actions = `
+                        <button class="btn-action btn-upload" onclick="openUpload('${r.id}')"><i class="fas fa-check"></i> Traiter</button>
+                        <button class="btn-action btn-reject" onclick="rejectRequest('${r.id}')"><i class="fas fa-times"></i></button>`;
+                    } else if (r.status === 'completed') {
+                        actions = `<a href="${r.file}" target="_blank" style="color:#3b82f6; font-size:0.9rem;">Voir Fichier</a>`;
+                    }
+
+                    tbody.innerHTML += `
+                    <tr>
+                        <td>${r.student}</td>
+                        <td>${r.type}</td>
+                        <td>${detailsTxt}</td>
+                        <td>${r.date}</td>
+                        <td>${statusBadge}</td>
+                        <td>${actions}</td>
+                    </tr>`;
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        function openUpload(id) {
+            document.getElementById('reqId').value = id;
+            document.getElementById('uploadModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('uploadModal').style.display = 'none';
+        }
+
+        async function handleProcess(e) {
+            e.preventDefault();
+            const id = document.getElementById('reqId').value;
+            const file = document.getElementById('fileInput').files[0];
+
+            const formData = new FormData();
+            formData.append('request_id', id);
+            formData.append('action', 'approve');
+            formData.append('file', file);
+
+            try {
+                const res = await fetch('/api/admin/process_request', { method: 'POST', body: formData });
+                const data = await res.json();
+                if(data.success) {
+                    alert("Document envoyé !");
+                    closeModal();
+                    loadAdminRequests();
+                } else {
+                    alert("Erreur: " + data.error);
+                }
+            } catch (err) { alert("Erreur serveur"); }
+        }
+
+        async function rejectRequest(id) {
+            const reason = prompt("Motif du refus :");
+            if(!reason) return;
+
+            const formData = new FormData();
+            formData.append('request_id', id);
+            formData.append('action', 'reject');
+            formData.append('reason', reason);
+
+            try {
+                await fetch('/api/admin/process_request', { method: 'POST', body: formData });
+                loadAdminRequests();
+            } catch (e) {}
+        }
+    </script>
+</body>
+</html>

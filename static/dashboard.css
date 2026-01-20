@@ -1,0 +1,349 @@
+/* =========================================
+   1. GLOBAL RESET & BODY
+   ========================================= */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+    background: linear-gradient(135deg, #1e3c72 0%, #ffd700 100%); /* Blue to Gold */
+}
+
+/* Background Overlay Image */
+.background-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('UIR.png'); /* Ensure this image exists in /static/ */
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: 0.18;
+    filter: blur(6px);
+    transform: scale(1.05);
+    z-index: -1;
+}
+
+/* =========================================
+   2. MODERN GLASS HEADER
+   ========================================= */
+.dashboard-header {
+    background: rgba(255, 255, 255, 0.8); /* Translucent White */
+    backdrop-filter: blur(15px);          /* Frosted Glass Effect */
+    -webkit-backdrop-filter: blur(15px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+    padding: 0 2rem;
+    height: 80px;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    transition: all 0.3s ease;
+}
+
+.header-content {
+    max-width: 1400px;
+    height: 100%;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Logo Animation */
+.logo-container a {
+    display: flex;
+    align-items: center;
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.logo-container a:hover {
+    transform: scale(1.05);
+}
+
+.logo {
+    height: 55px;
+    width: auto;
+    object-fit: contain;
+}
+
+/* --- NAVIGATION BUTTONS (Updated) --- */
+.user-section {
+    display: flex;
+    align-items: center;
+    gap: 12px; /* Space between buttons */
+    background: transparent;
+    border: none;
+    padding: 0;
+}
+
+/* Individual Button Style */
+.header-link {
+    background: rgba(255, 255, 255, 0.9); /* Solid white/glass background */
+    color: #1e3c72; /* Deep Blue Text */
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 0.9rem;
+    padding: 0.7rem 1.4rem; /* Larger clickable area */
+    border-radius: 30px; /* Pill shape */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05); /* Subtle shadow */
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px; /* Space between icon and text */
+}
+
+/* Hover Effect */
+.header-link:hover {
+    background: #1e3c72; /* Blue Background on Hover */
+    color: #fff; /* White Text */
+    transform: translateY(-2px); /* Slight lift */
+    box-shadow: 0 8px 15px rgba(30, 60, 114, 0.2);
+    border-color: #1e3c72;
+}
+
+/* Danger Button (Red) for Logout */
+.header-link.danger-btn {
+    color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.header-link.danger-btn:hover {
+    background: #ef4444;
+    color: white;
+    box-shadow: 0 8px 15px rgba(239, 68, 68, 0.25);
+    border-color: #ef4444;
+}
+
+/* HIDE PROFILE PICTURE */
+.profile-link {
+    display: none !important;
+}
+
+/* =========================================
+   3. DASHBOARD MAIN LAYOUT
+   ========================================= */
+.dashboard-main {
+    padding: 3rem 2rem;
+    min-height: calc(100vh - 120px);
+}
+
+.dashboard-container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.dashboard-title {
+    text-align: center;
+    color: white;
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin-bottom: 3rem;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+/* =========================================
+   4. DASHBOARD CARDS
+   ========================================= */
+.dashboard-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border: none;
+    border-radius: 20px;
+    padding: 2.5rem 2rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Gradient Top Bar on Cards */
+.dashboard-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(135deg, #1e3c72 0%, #ffd700 100%);
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
+}
+
+.dashboard-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.25);
+}
+
+.dashboard-card:hover::before {
+    transform: scaleX(1);
+}
+
+.card-icon {
+    font-size: 4rem;
+    margin-bottom: 0.5rem;
+    filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+.card-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1e3c72;
+    margin: 0;
+}
+
+.card-description {
+    font-size: 0.95rem;
+    color: #666;
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* =========================================
+   5. AI ASSISTANT BUBBLE
+   ========================================= */
+.bottom-actions {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.ai-assistant-bubble {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+    border: 3px solid #1e3c72;
+    box-shadow: 0 8px 25px rgba(30, 60, 114, 0.4);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    color: #1e3c72;
+}
+
+.ai-assistant-bubble:hover {
+    transform: scale(1.15);
+    box-shadow: 0 12px 35px rgba(30, 60, 114, 0.6);
+    border-color: #fff;
+}
+
+.ai-assistant-bubble:active {
+    transform: scale(0.95);
+}
+
+.ai-icon {
+    width: 35px;
+    height: 35px;
+}
+
+.ai-text {
+    font-weight: bold;
+    font-size: 1.4rem;
+    margin-left: 5px;
+}
+
+/* =========================================
+   6. ANNOUNCEMENTS SECTION STYLES
+   ========================================= */
+/* (Fallback styles if not in HTML) */
+.announcement-section {
+    max-width: 1200px;
+    margin: 40px auto;
+    padding: 0 20px;
+}
+
+.latest-announcement-card {
+    background: linear-gradient(145deg, #1e293b, #0f172a);
+    border: 1px solid #334155;
+    border-left: 5px solid #3b82f6;
+    border-radius: 12px;
+    padding: 25px;
+    color: white;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+}
+
+/* =========================================
+   7. RESPONSIVE MEDIA QUERIES
+   ========================================= */
+@media (max-width: 1024px) {
+    .dashboard-grid {
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .dashboard-header {
+        padding: 0.5rem 1rem;
+        height: auto;
+    }
+    
+    .header-content {
+        flex-direction: column;
+        gap: 15px;
+        padding-bottom: 15px;
+    }
+
+    .user-section {
+        width: 100%;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .dashboard-main {
+        padding: 2rem 1rem;
+    }
+
+    .dashboard-title {
+        font-size: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    .dashboard-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .dashboard-card {
+        padding: 1.5rem;
+    }
+    
+    .ai-assistant-bubble {
+        width: 60px;
+        height: 60px;
+    }
+
+    .ai-text {
+        font-size: 1rem;
+    }
+}

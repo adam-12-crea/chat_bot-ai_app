@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Multitask AI Helper - Accueil</title>
+    <link rel="stylesheet" href="/static/accueil.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="logo-container">
+                <a href="/templates/accueil.html">
+                    <img src="/static/uir logo.png" alt="Logo Université" class="logo" id="universityLogo">
+                </a>
+            </div>
+            <div class="auth-buttons">
+                <button class="btn btn-secondary" id="signInBtn">Sign In</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="content-wrapper">
+            <div class="left-section">
+                <h1 class="site-title">Student Multitask AI Helper</h1>
+                <div class="description">
+                    <p class="description-text">
+                        Découvrez une plateforme innovante alimentée par l’IA, conçue pour vous accompagner à chaque étape 
+                        de votre parcours académique, que vous soyez étudiant, enseignant ou membre de l’administration.
+                    </p>
+                    <ul class="features-list">
+                        <li>🤖 Assistant IA avancé – Posez vos questions académiques et obtenez des réponses claires et personnalisées.</li>
+                        <li>📚 FAQ universitaire intelligente – Trouvez rapidement les informations dont vous avez besoin grâce à une recherche optimisée.</li>
+                        <li>📅 Planificateur d’études personnalisé – Organisez votre emploi du temps, vos révisions et vos échéances pour maximiser vos résultats.</li>
+                        <li>📝 Générateur de quiz adaptatif – Testez vos connaissances avec des exercices adaptés à votre niveau et suivez vos progrès.</li>
+                        <li>📊 Suivi de présence et gestion de documents – Gardez un œil sur vos absences, vos notes et vos documents universitaires.</li>   
+                        <li>🎓 Support complet pour étudiants, enseignants et administration – Recevez une assistance rapide et efficace pour toutes vos questions.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="right-section">
+                <div class="university-image-container">
+                    <img src="/static/UIR.png" alt="Photo de l'université" class="university-image" id="universityImage">
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div class="bottom-actions">
+        <button class="ai-assistant-bubble" id="aiAssistantBtn" aria-label="Ouvrir l'assistant IA">
+            <svg class="ai-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="currentColor"/>
+            </svg>
+            <span class="ai-text">AI</span>
+        </button>
+    </div>
+
+    <script src="/static/accueil.js"></script>
+</body>
+</html>

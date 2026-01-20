@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assistant AI - Université</title>
+    <link rel="stylesheet" href="/static/dashboard.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Chat Specific Styles matching the Dark/Glass Theme */
+        .chat-container {
+            max-width: 1000px;
+            margin: 20px auto;
+            height: calc(100vh - 140px);
+            display: flex;
+            gap: 20px;
+        }
+
+        /* Sidebar (History) */
+        .chat-sidebar {
+            width: 260px;
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .new-chat-btn {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            border: none;
+            padding: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: 0.3s;
+        }
+        .new-chat-btn:hover { filter: brightness(1.1); }
+
+        .history-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .history-item {
+            padding: 10px;
+            margin-bottom: 5px;
+            border-radius: 8px;
+            color: #cbd5e1;
+            cursor: pointer;
+            transition: 0.2s;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 0.9rem;
+        }
+        .history-item:hover { background: rgba(255,255,255,0.1); color: white; }
+        .history-item.active { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+
+        /* Main Chat Area */
+        .chat-main {
+            flex: 1;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .messages-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Message Bubbles */
+        .message {
+            max-width: 80%;
+            padding: 12px 18px;
+            border-radius: 12px;
+            line-height: 1.5;
+            position: relative;
+        }
+        .message.user {
+            align-self: flex-end;
+            background: #3b82f6;
+            color: white;
+            border-bottom-right-radius: 2px;
+        }
+        .message.ai {
+            align-self: flex-start;
+            background: #1e293b;
+            color: #e2e8f0;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-bottom-left-radius: 2px;
+        }
+
+        /* Input Area */
+        .input-area {
+            padding: 20px;
+            background: rgba(30, 41, 59, 0.5);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .chat-input {
+            flex: 1;
+            background: #0f172a;
+            border: 1px solid #334155;
+            color: white;
+            padding: 12px;
+            border-radius: 25px;
+            outline: none;
+            font-family: inherit;
+        }
+        .chat-input:focus { border-color: #3b82f6; }
+
+        .send-btn {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            border: none;
+            background: #3b82f6;
+            color: white;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .send-btn:hover { transform: scale(1.05); }
+
+        .upload-btn {
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 0 10px;
+        }
+        .upload-btn:hover { color: white; }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .chat-container { flex-direction: column; height: calc(100vh - 100px); }
+            .chat-sidebar { width: 100%; height: 60px; flex-direction: row; align-items: center; }
+            .history-list { display: none; } /* Hide history on mobile for simplicity */
+            .new-chat-btn { width: 100%; justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+    <div class="background-overlay"></div>
+    
+    <header class="dashboard-header">
+    <div class="header-content">
+        <div class="logo-container">
+            <a href="{{ dashboard_link }}">
+                <img src="/static/uir logo.png" class="logo" alt="UIR Logo">
+            </a>
+        </div>
+
+        <div class="user-section">
+            <a href="{{ dashboard_link }}" class="header-link">
+                <i class="fas fa-home"></i> Accueil
+            </a>
+            
+            {% if user_role == 'student' %}
+            <a href="emploi-temps.html" class="header-link">
+                <i class="fas fa-calendar-alt"></i> Emploi du temps
+            </a>
+            {% endif %}
+
+            <a href="profil.html" class="header-link">
+                <i class="fas fa-user"></i> Profil
+            </a>
+
+            <a href="/api/logout" class="header-link danger-btn">
+                <i class="fas fa-sign-out-alt"></i> Déconnexion
+            </a>
+        </div>
+    </div>
+</header>
+
+    <div class="chat-container">
+        <aside class="chat-sidebar">
+            <button class="new-chat-btn" onclick="startNewChat()">
+                <i class="fas fa-plus"></i> Nouvelle Conversation
+            </button>
+            <div class="history-list" id="historyList">
+                </div>
+        </aside>
+
+        <main class="chat-main">
+            <div class="chat-header">
+                <span id="chatTitle">Nouvelle discussion</span>
+                <span style="font-size: 0.8rem; color:#94a3b8;">IA Universitaire</span>
+            </div>
+            
+            <div class="messages-area" id="messagesArea">
+                <div class="message ai">
+                    Bonjour {{ user_name.split()[0] }}! Je suis ton assistant universitaire. Comment puis-je t'aider aujourd'hui ?
+                </div>
+            </div>
+
+            <div class="input-area">
+                <input type="file" id="fileInput" style="display: none;" onchange="uploadFile()">
+                <button class="upload-btn" onclick="document.getElementById('fileInput').click()" title="Uploader un document">
+                    <i class="fas fa-paperclip"></i>
+                </button>
+                <input type="text" class="chat-input" id="userInput" placeholder="Posez votre question..." onkeypress="handleEnter(event)">
+                <button class="send-btn" onclick="sendMessage()">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // 1. GENERATE OR RETRIEVE SESSION ID
+        let currentSessionId = localStorage.getItem('current_session_id');
+        if (!currentSessionId) {
+            currentSessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem('current_session_id', currentSessionId);
+        }
+
+        window.onload = function() {
+            loadHistory();
+            loadMessages();
+        };
+
+        function handleEnter(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                sendMessage();
+            }
+        }
+
+        // 2. SEND MESSAGE FUNCTION
+        async function sendMessage() {
+            const input = document.getElementById('userInput');
+            const msg = input.value.trim();
+            if (!msg) return;
+
+            // Display User Message
+            appendMessage(msg, 'user');
+            input.value = '';
+
+            // Display Loading Spinner
+            const loadingId = appendMessage('<i class="fas fa-spinner fa-spin"></i> Réflexion...', 'ai');
+
+            try {
+                const res = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        message: msg, 
+                        session_id: currentSessionId
+                    })
+                });
+
+                const data = await res.json();
+                
+                // Remove loading spinner safely
+                const spinner = document.getElementById(loadingId);
+                if (spinner) spinner.remove();
+                
+                if (data.response) {
+                    appendMessage(data.response, 'ai');
+                    if(data.title) {
+                        document.getElementById('chatTitle').innerText = data.title;
+                        loadHistory(); // Refresh sidebar
+                    }
+                } else {
+                    appendMessage("Erreur: " + (data.error || "Inconnue"), 'ai');
+                }
+
+            } catch (e) {
+                const spinner = document.getElementById(loadingId);
+                if (spinner) spinner.remove();
+                appendMessage("Erreur de connexion au serveur.", 'ai');
+                console.error(e);
+            }
+        }
+
+        // --- FIXED APPEND MESSAGE (Unique IDs) ---
+        function appendMessage(text, sender) {
+            const div = document.createElement('div');
+            div.className = `message ${sender}`;
+            // Unique ID to prevent deleting the wrong message
+            div.id = 'msg_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+            
+            div.innerHTML = text.replace(/\n/g, '<br>');
+            
+            const container = document.getElementById('messagesArea');
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+            return div.id;
+        }
+
+        // 3. LOAD HISTORY
+        async function loadHistory() {
+            try {
+                const res = await fetch('/api/conversations');
+                const convos = await res.json();
+                const list = document.getElementById('historyList');
+                list.innerHTML = '';
+
+                convos.forEach(c => {
+                    const item = document.createElement('div');
+                    item.className = `history-item ${c.session_id === currentSessionId ? 'active' : ''}`;
+                    item.innerHTML = `<i class="far fa-comment-alt"></i> ${c.title}`;
+                    item.onclick = () => switchSession(c.session_id);
+                    list.appendChild(item);
+                });
+            } catch(e) { console.error(e); }
+        }
+
+        // 4. LOAD OLD MESSAGES
+        async function loadMessages() {
+            try {
+                const res = await fetch(`/api/load_session/${currentSessionId}`);
+                const data = await res.json();
+                if(data.messages) {
+                    const area = document.getElementById('messagesArea');
+                    area.innerHTML = ''; 
+                    data.messages.forEach(m => {
+                        appendMessage(m.user, 'user');
+                        appendMessage(m.ai, 'ai');
+                    });
+                    if(data.title) document.getElementById('chatTitle').innerText = data.title;
+                }
+            } catch(e) {}
+        }
+
+        function switchSession(id) {
+            currentSessionId = id;
+            localStorage.setItem('current_session_id', id);
+            loadHistory(); 
+            loadMessages();
+        }
+
+        function startNewChat() {
+            currentSessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem('current_session_id', currentSessionId);
+            document.getElementById('messagesArea').innerHTML = '<div class="message ai">Nouvelle conversation démarrée.</div>';
+            document.getElementById('chatTitle').innerText = 'Nouvelle discussion';
+            loadHistory();
+        }
+
+        // 5. FILE UPLOAD
+        async function uploadFile() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            if(!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('session_id', currentSessionId);
+
+            appendMessage(`📂 Envoi du fichier: ${file.name}...`, 'user');
+
+            try {
+                const res = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                if(data.success) {
+                    appendMessage("✅ Fichier analysé. Vous pouvez poser des questions dessus.", 'ai');
+                } else {
+                    appendMessage("❌ Échec de l'upload.", 'ai');
+                }
+            } catch(e) {
+                appendMessage("❌ Erreur serveur.", 'ai');
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mes Cours - UIR</title>
+    <link rel="stylesheet" href="/static/dashboard.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* LAYOUT: Sidebar + Content */
+        .app-layout {
+            display: flex; height: calc(100vh - 80px); /* Subtract Header Height */
+            overflow: hidden;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            width: 300px; background: #0f172a; border-right: 1px solid #334155;
+            padding: 20px; overflow-y: auto; display: flex; flex-direction: column;
+        }
+        .sidebar h3 { color: #94a3b8; font-size: 0.9rem; text-transform: uppercase; margin-bottom: 15px; }
+        
+        .subject-btn {
+            background: transparent; border: none; color: white; text-align: left;
+            padding: 15px; border-radius: 8px; margin-bottom: 8px; cursor: pointer;
+            transition: 0.2s; font-size: 1rem; display: flex; justify-content: space-between; align-items: center;
+        }
+        .subject-btn:hover { background: #1e293b; }
+        .subject-btn.active { background: #3b82f6; font-weight: bold; box-shadow: 0 4px 10px rgba(59, 130, 246, 0.4); }
+
+        /* MAIN CONTENT */
+        .content-area {
+            flex: 1; padding: 40px; overflow-y: auto; position: relative;
+        }
+
+        .category-section { margin-bottom: 40px; }
+        .category-title { 
+            color: white; font-size: 1.5rem; border-bottom: 2px solid #334155; 
+            padding-bottom: 10px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;
+        }
+
+        .files-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px;
+        }
+
+        .file-card {
+            background: rgba(30, 41, 59, 0.8); border: 1px solid #334155; border-radius: 12px;
+            padding: 20px; transition: 0.3s; position: relative; overflow: hidden;
+        }
+        .file-card:hover { transform: translateY(-5px); background: #1e293b; border-color: #3b82f6; }
+
+        .file-icon { font-size: 2.5rem; margin-bottom: 15px; color: #cbd5e1; }
+        .file-name { color: white; font-weight: bold; margin-bottom: 5px; word-break: break-all; }
+        .file-meta { color: #94a3b8; font-size: 0.85rem; margin-bottom: 15px; }
+        
+        .download-btn {
+            display: inline-block; padding: 8px 15px; background: #334155; color: white;
+            border-radius: 6px; text-decoration: none; font-size: 0.9rem; transition: 0.2s;
+        }
+        .download-btn:hover { background: #3b82f6; }
+
+        /* Icon Colors */
+        .fa-file-pdf { color: #ef4444; }
+        .fa-file-powerpoint { color: #f97316; }
+        .fa-file-code { color: #3b82f6; }
+        .fa-file-alt { color: #94a3b8; }
+
+    </style>
+</head>
+<body>
+    <div class="background-overlay"></div>
+
+    <header class="dashboard-header">
+        <div class="header-content">
+            <div class="logo-container">
+                <a href="{{ dashboard_link }}"><img src="/static/uir logo.png" class="logo" alt="UIR Logo"></a>
+            </div>
+            <div class="user-section">
+                <a href="{{ dashboard_link }}" class="header-link"><i class="fas fa-home"></i> Accueil</a>
+                <a href="profil.html" class="header-link"><i class="fas fa-user"></i> Profil</a>
+                <a href="/api/logout" class="header-link danger-btn"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="app-layout">
+        <div class="sidebar">
+            <h3>Mes Matières</h3>
+            <div id="subjectList">
+                <div style="color:#64748b; text-align:center;">Chargement...</div>
+            </div>
+        </div>
+
+        <div class="content-area" id="mainContent">
+            <div style="text-align: center; color: #94a3b8; margin-top: 100px;">
+                <i class="fas fa-arrow-left fa-3x" style="margin-bottom:20px;"></i><br>
+                Sélectionnez une matière dans le menu pour voir les cours.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.onload = loadSubjects;
+
+        async function loadSubjects() {
+            try {
+                const res = await fetch('/api/student/subjects');
+                const subjects = await res.json();
+                const container = document.getElementById('subjectList');
+                container.innerHTML = '';
+
+                if(subjects.length === 0) {
+                    container.innerHTML = '<p style="color:#ef4444">Aucune matière trouvée.</p>';
+                    return;
+                }
+
+                subjects.forEach(sub => {
+                    const btn = document.createElement('button');
+                    btn.className = 'subject-btn';
+                    btn.innerHTML = `${sub} <i class="fas fa-chevron-right" style="font-size:0.8rem; opacity:0.5;"></i>`;
+                    btn.onclick = () => {
+                        // Highlight Active
+                        document.querySelectorAll('.subject-btn').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        loadMaterials(sub);
+                    };
+                    container.appendChild(btn);
+                });
+
+            } catch (e) { console.error(e); }
+        }
+
+        async function loadMaterials(subject) {
+            const container = document.getElementById('mainContent');
+            container.innerHTML = `<div style="text-align:center; color:white; padding:50px;"><i class="fas fa-spinner fa-spin fa-2x"></i><br><br>Chargement de ${subject}...</div>`;
+
+            try {
+                const res = await fetch(`/api/student/get_materials/${encodeURIComponent(subject)}`);
+                const files = await res.json();
+
+                if (files.length === 0) {
+                    container.innerHTML = `
+                        <h1 style="color:white; margin-bottom:10px;">${subject}</h1>
+                        <p style="color:#94a3b8;">Aucun document n'a été mis en ligne pour le moment.</p>`;
+                    return;
+                }
+
+                // Group by Category
+                const grouped = { 'Cours': [], 'TD': [], 'TP': [], 'Autre': [] };
+                files.forEach(f => {
+                    if (grouped[f.category]) grouped[f.category].push(f);
+                    else grouped['Autre'].push(f);
+                });
+
+                let html = `<h1 style="color:white; margin-bottom:30px;">${subject}</h1>`;
+
+                // Render Categories
+                for (const [cat, items] of Object.entries(grouped)) {
+                    if (items.length > 0) {
+                        html += `
+                        <div class="category-section">
+                            <div class="category-title">
+                                ${getCategoryIcon(cat)} ${cat}
+                            </div>
+                            <div class="files-grid">
+                                ${items.map(f => createFileCard(f)).join('')}
+                            </div>
+                        </div>`;
+                    }
+                }
+                container.innerHTML = html;
+
+            } catch (e) {
+                console.error(e);
+                container.innerHTML = '<p style="color:red">Erreur de chargement.</p>';
+            }
+        }
+
+        function getCategoryIcon(cat) {
+            if (cat === 'Cours') return '<i class="fas fa-book-open" style="color:#facc15;"></i>';
+            if (cat === 'TP') return '<i class="fas fa-laptop-code" style="color:#3b82f6;"></i>';
+            if (cat === 'TD') return '<i class="fas fa-pencil-alt" style="color:#22c55e;"></i>';
+            return '<i class="fas fa-folder"></i>';
+        }
+
+        function createFileCard(f) {
+            let iconClass = 'fa-file-alt';
+            if (f.type.includes('pdf')) iconClass = 'fa-file-pdf';
+            else if (f.type.includes('ppt') || f.type.includes('pptx')) iconClass = 'fa-file-powerpoint';
+            else if (['py','java','c','cpp','js','html'].includes(f.type)) iconClass = 'fa-file-code';
+
+            return `
+            <div class="file-card">
+                <i class="fas ${iconClass} file-icon"></i>
+                <div class="file-name">${f.filename.substring(11)}</div> <div class="file-meta">
+                    Par ${f.teacher}<br>
+                    ${f.date}
+                </div>
+                <a href="${f.link}" target="_blank" class="download-btn">
+                    <i class="fas fa-download"></i> Télécharger
+                </a>
+            </div>`;
+        }
+    </script>
+</body>
+</html>

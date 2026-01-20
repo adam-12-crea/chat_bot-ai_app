@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Cours - Enseignant</title>
+    <link rel="stylesheet" href="/static/dashboard.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .page-container { max-width: 800px; margin: 40px auto; padding: 20px; }
+
+        .upload-card {
+            background: rgba(30, 41, 59, 0.95);
+            border: 1px solid #334155;
+            padding: 30px; border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .form-group { margin-bottom: 20px; }
+        .form-label { display: block; color: #94a3b8; margin-bottom: 8px; font-weight: bold; }
+        
+        .form-select, .form-input {
+            width: 100%; padding: 12px; background: #0f172a; border: 1px solid #475569;
+            color: white; border-radius: 8px; font-size: 1rem;
+        }
+        .form-select:focus, .form-input:focus { outline: none; border-color: #3b82f6; }
+
+        /* File Drop Zone */
+        .drop-zone {
+            border: 2px dashed #475569; border-radius: 10px; padding: 40px;
+            text-align: center; cursor: pointer; transition: 0.3s;
+            background: rgba(15, 23, 42, 0.5);
+        }
+        .drop-zone:hover { border-color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
+        .drop-zone i { font-size: 3rem; color: #64748b; margin-bottom: 10px; }
+        .drop-zone p { color: #cbd5e1; margin: 0; }
+
+        .file-list { margin-top: 15px; }
+        .file-item { 
+            background: #1e293b; padding: 10px; margin-bottom: 5px; border-radius: 6px; 
+            display: flex; justify-content: space-between; color: white; border: 1px solid #334155;
+        }
+
+        .btn-upload {
+            width: 100%; padding: 15px; background: #3b82f6; color: white; border: none;
+            border-radius: 8px; font-weight: bold; font-size: 1.1rem; cursor: pointer;
+            margin-top: 20px; transition: 0.2s;
+        }
+        .btn-upload:hover { background: #2563eb; }
+        .btn-upload:disabled { background: #64748b; cursor: not-allowed; }
+
+        /* Success Animation */
+        .success-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 1000;
+        }
+        .success-box {
+            background: #1e293b; padding: 40px; border-radius: 20px; text-align: center;
+            border: 2px solid #22c55e; animation: popIn 0.3s ease;
+        }
+        @keyframes popIn { from {transform: scale(0.8); opacity: 0;} to {transform: scale(1); opacity: 1;} }
+
+    </style>
+</head>
+<body>
+    <div class="background-overlay"></div>
+
+    <header class="dashboard-header">
+        <div class="header-content">
+            <div class="logo-container">
+                <a href="{{ dashboard_link }}"><img src="/static/uir logo.png" class="logo" alt="UIR Logo"></a>
+            </div>
+            <div class="user-section">
+                <a href="{{ dashboard_link }}" class="header-link"><i class="fas fa-home"></i> Accueil</a>
+                <a href="profil.html" class="header-link"><i class="fas fa-user"></i> Profil</a>
+                <a href="/api/logout" class="header-link danger-btn"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="page-container">
+        <h1 style="color: white; margin-bottom: 10px;">📤 Mettre en ligne un Cours</h1>
+        <p style="color: #94a3b8; margin-bottom: 30px;">Partagez des documents (PDF, PPT, Code) avec vos étudiants.</p>
+
+        <div class="upload-card">
+            <form id="uploadForm" onsubmit="handleUpload(event)">
+                
+                <div class="form-group">
+                    <label class="form-label">Matière et Filière</label>
+                    <select id="subjectSelect" class="form-select" required>
+                        <option value="" disabled selected>Chargement...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Type de document</label>
+                    <select id="categorySelect" class="form-select" required>
+                        <option value="Cours">📖 Cours Magistral (Slides, Notes)</option>
+                        <option value="TD">✍️ Travaux Dirigés (TD)</option>
+                        <option value="TP">💻 Travaux Pratiques (TP)</option>
+                        <option value="Autre">📂 Autre</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Fichiers</label>
+                    <div class="drop-zone" onclick="document.getElementById('fileInput').click()">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <p>Cliquez pour sélectionner des fichiers</p>
+                    </div>
+                    <input type="file" id="fileInput" multiple style="display: none;" onchange="updateFileList()">
+                    <div id="fileListDisplay" class="file-list"></div>
+                </div>
+
+                <button type="submit" class="btn-upload" id="uploadBtn">
+                    <i class="fas fa-paper-plane"></i> Publier le document
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="success-overlay" id="successModal">
+        <div class="success-box">
+            <i class="fas fa-check-circle" style="color: #22c55e; font-size: 4rem; margin-bottom: 20px;"></i>
+            <h2 style="color: white; margin: 0;">Fichier envoyé !</h2>
+            <p style="color: #cbd5e1; margin-top: 10px;">Les étudiants peuvent maintenant le voir.</p>
+            <button onclick="location.reload()" class="btn-upload" style="margin-top: 20px; background: #22c55e;">Nouveau fichier</button>
+        </div>
+    </div>
+
+    <script>
+        window.onload = async function() {
+            try {
+                // Fetch Teacher's Assigned Subjects
+                const res = await fetch('/api/teacher/get_upload_options');
+                const options = await res.json();
+                
+                const select = document.getElementById('subjectSelect');
+                select.innerHTML = '<option value="" disabled selected>-- Sélectionner --</option>';
+
+                if (options.length === 0) {
+                    select.innerHTML = '<option disabled>Aucune matière assignée</option>';
+                    return;
+                }
+
+                options.forEach(opt => {
+                    const el = document.createElement('option');
+                    el.value = JSON.stringify(opt); // Value contains {subject: "X", major: "Y"}
+                    el.innerText = `${opt.subject} (${opt.major})`;
+                    select.appendChild(el);
+                });
+            } catch (e) { console.error(e); }
+        };
+
+        function updateFileList() {
+            const input = document.getElementById('fileInput');
+            const list = document.getElementById('fileListDisplay');
+            list.innerHTML = '';
+            Array.from(input.files).forEach(f => {
+                list.innerHTML += `<div class="file-item"><span>${f.name}</span><span style="color:#94a3b8">${(f.size/1024/1024).toFixed(2)} MB</span></div>`;
+            });
+        }
+
+        async function handleUpload(e) {
+            e.preventDefault();
+            const btn = document.getElementById('uploadBtn');
+            const fileInput = document.getElementById('fileInput');
+            const subjectData = JSON.parse(document.getElementById('subjectSelect').value);
+            const category = document.getElementById('categorySelect').value;
+
+            if (fileInput.files.length === 0) {
+                alert("Veuillez sélectionner au moins un fichier.");
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Envoi en cours...';
+
+            const formData = new FormData();
+            formData.append('subject', subjectData.subject);
+            formData.append('major', subjectData.major);
+            formData.append('category', category);
+            
+            for (let i = 0; i < fileInput.files.length; i++) {
+                formData.append('files', fileInput.files[i]);
+            }
+
+            try {
+                const res = await fetch('/api/teacher/upload_material', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    document.getElementById('successModal').style.display = 'flex';
+                } else {
+                    alert("Erreur: " + (data.error || "Inconnue"));
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-paper-plane"></i> Publier le document';
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Erreur de connexion.");
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-paper-plane"></i> Publier le document';
+            }
+        }
+    </script>
+</body>
+</html>
